@@ -1407,3 +1407,153 @@ video {
     transform: translateZ(0);
     backface-visibility: hidden;
 }
+
+/* Content visibility for off-screen optimization */
+.content-visibility-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 500px;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .preloader,
+    .preloader * {
+        animation: none !important;
+        transition: opacity 0.2s linear !important;
+    }
+}
+
+/* ================================================
+   MOBILE TOUCH OPTIMIZATIONS
+   ================================================ */
+@media (max-width: 768px) {
+
+    /* Touch-friendly tap targets */
+    button,
+    a,
+    [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Sticky bottom CTA bar */
+    .mobile-cta-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: var(--space-md);
+        background: linear-gradient(to top, var(--color-void), transparent);
+        z-index: var(--z-overlay);
+    }
+
+    /* Gallery grid responsive */
+    .gallery-section {
+        padding: var(--space-md);
+    }
+
+    /* Property card touch optimizations */
+    .property-meta {
+        padding: var(--space-md);
+        backdrop-filter: blur(var(--blur-medium));
+        -webkit-backdrop-filter: blur(var(--blur-medium));
+    }
+
+    /* Footer mobile layout */
+    .footer__content {
+        flex-direction: column;
+        gap: var(--space-xl);
+    }
+
+    /* Scene progress hidden on small screens */
+    .scene-progress {
+        transform: scale(0.8);
+        right: var(--space-sm);
+    }
+
+    /* Hero text sizing */
+    .hero-headlines {
+        padding: var(--space-md);
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* Extra small screens */
+    .property-meta__stats {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .footer__cta-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ================================================
+   TOUCH GESTURE SUPPORT
+   ================================================ */
+.touch-scroll-snap {
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.touch-scroll-snap>* {
+    scroll-snap-align: start;
+}
+
+/* Disable hover on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .gallery-section__item:hover {
+        transform: none;
+    }
+
+    /* Make metadata visible by default on touch */
+    .gallery-section__item .metadata-overlay {
+        opacity: 1;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --color-accent: #ffd700;
+        --color-ivory: #ffffff;
+        --color-graphite: #333333;
+    }
+
+    .property-meta,
+    .footer,
+    .navbar {
+        border: 1px solid var(--color-ivory);
+    }
+}
+
+/* ================================================
+   CRITICAL CSS - Above the fold
+   ================================================ */
+.preloader {
+    contain: strict;
+}
+
+.hero-headlines {
+    contain: layout style;
+}
+
+/* Optimize paint for fixed elements */
+.navbar,
+.scene-progress,
+.scroll-indicator {
+    isolation: isolate;
+}

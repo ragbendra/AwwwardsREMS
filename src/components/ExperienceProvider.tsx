@@ -12,12 +12,20 @@ const ExperienceCanvas = dynamic(
     { ssr: false }
 );
 
+// Extended property data type to support new fields
 type PropertyData = {
+    id?: string;
     name: string;
     type: string;
+    tagline?: string;
+    narrative?: string;
     value: number;
     units: number;
     occupancy: number;
+    acquiredYear?: number;
+    appreciationPercent?: number;
+    architect?: string;
+    awards?: string[];
 };
 
 export default function ExperienceProvider() {
@@ -55,14 +63,22 @@ export default function ExperienceProvider() {
         setScrollProgress(progress);
     }, []);
 
+    // Enhanced property focus handler to include new data fields
     const handlePropertyFocus = useCallback((property: typeof portfolioData.properties[0] | null) => {
         if (property) {
             setFocusedProperty({
+                id: property.id,
                 name: property.name,
                 type: property.type,
+                tagline: property.tagline,
+                narrative: property.narrative,
                 value: property.value,
                 units: property.units,
                 occupancy: property.occupancy,
+                acquiredYear: property.acquiredYear,
+                appreciationPercent: property.appreciationPercent,
+                architect: property.architect,
+                awards: property.awards,
             });
         } else {
             setFocusedProperty(null);
@@ -87,7 +103,7 @@ export default function ExperienceProvider() {
             {isLoading && (
                 <Preloader
                     onComplete={handlePreloaderComplete}
-                    duration={reducedMotion ? 500 : 2500}
+                    duration={reducedMotion ? 500 : 3500}
                 />
             )}
 
@@ -111,6 +127,8 @@ export default function ExperienceProvider() {
                         justifyContent: 'center',
                         flexDirection: 'column',
                         gap: 'var(--space-lg)',
+                        textAlign: 'center',
+                        padding: 'var(--space-xl)',
                     }}
                 >
                     <h1
@@ -121,8 +139,18 @@ export default function ExperienceProvider() {
                             color: 'var(--color-ivory)',
                         }}
                     >
-                        Meridian Capital Portfolio
+                        Meridian Capital
                     </h1>
+                    <p
+                        style={{
+                            fontFamily: 'var(--font-body)',
+                            fontSize: 'var(--text-lg)',
+                            color: 'var(--color-accent)',
+                            fontWeight: 300,
+                        }}
+                    >
+                        ${(portfolioData.portfolio.totalValue / 1000000000).toFixed(1)}B in Architectural Intelligence
+                    </p>
                     <p
                         style={{
                             fontFamily: 'var(--font-body)',
@@ -130,7 +158,7 @@ export default function ExperienceProvider() {
                             color: 'var(--color-silver)',
                         }}
                     >
-                        $847M in managed assets
+                        {portfolioData.portfolio.occupancyRate}% Average Occupancy
                     </p>
                 </div>
             )}

@@ -4,14 +4,20 @@
     "totalValue": 847000000,
     "totalUnits": 2847,
     "occupancyRate": 94.2,
-    "monthlyRevenue": 4250000
+    "monthlyRevenue": 4250000,
+    "investorCount": 127,
+    "marketAvgOccupancy": 91.2,
+    "portfolioAvgOccupancy": 96.8,
+    "yearsOfData": 7
   },
   "properties": [
     {
       "id": "prop-001",
       "name": "The Obsidian Tower",
       "type": "Luxury Residential",
+      "tagline": "Manhattan's crown jewel of vertical living",
       "location": "Manhattan, NY",
+      "neighborhood": "Tribeca",
       "value": 285000000,
       "units": 187,
       "floors": 52,
@@ -21,12 +27,41 @@
       "sqft": 425000,
       "riskScore": 12,
       "description": "Ultra-luxury residential tower with panoramic city views",
-      "amenities": ["Rooftop Pool", "Private Cinema", "Concierge", "Spa"],
+      "narrative": "Where industrial heritage meets residential innovation",
+      "acquiredYear": 2019,
+      "acquiredValue": 195000000,
+      "appreciationPercent": 46,
+      "architect": "Foster + Partners",
+      "awards": [
+        "Architectural Digest Best New Building 2022"
+      ],
+      "amenities": [
+        "Rooftop Pool",
+        "Private Cinema",
+        "Concierge",
+        "Spa"
+      ],
       "unitTypes": [
-        { "type": "Studio", "count": 24, "avgRent": 4500 },
-        { "type": "1BR", "count": 65, "avgRent": 7200 },
-        { "type": "2BR", "count": 58, "avgRent": 12500 },
-        { "type": "Penthouse", "count": 8, "avgRent": 45000 }
+        {
+          "type": "Studio",
+          "count": 24,
+          "avgRent": 4500
+        },
+        {
+          "type": "1BR",
+          "count": 65,
+          "avgRent": 7200
+        },
+        {
+          "type": "2BR",
+          "count": 58,
+          "avgRent": 12500
+        },
+        {
+          "type": "Penthouse",
+          "count": 8,
+          "avgRent": 45000
+        }
       ],
       "financials": {
         "noi": 18500000,
@@ -34,14 +69,24 @@
         "cashOnCash": 8.2,
         "debtService": 9800000
       },
-      "position": { "x": -8, "y": 0, "z": -15 },
-      "scale": { "x": 2, "y": 8, "z": 2 }
+      "position": {
+        "x": -8,
+        "y": 0,
+        "z": -15
+      },
+      "scale": {
+        "x": 2,
+        "y": 8,
+        "z": 2
+      }
     },
     {
       "id": "prop-002",
       "name": "Horizon Gardens",
       "type": "Mixed-Use Development",
+      "tagline": "Where sustainability meets sophistication",
       "location": "Brooklyn, NY",
+      "neighborhood": "Williamsburg",
       "value": 165000000,
       "units": 312,
       "floors": 28,
@@ -51,12 +96,41 @@
       "sqft": 380000,
       "riskScore": 18,
       "description": "Sustainable mixed-use complex with retail podium",
-      "amenities": ["Green Roof", "Coworking Space", "Bike Storage", "EV Charging"],
+      "narrative": "The future of urban living, realized",
+      "acquiredYear": 2018,
+      "acquiredValue": 110000000,
+      "appreciationPercent": 50,
+      "architect": "BIG Architects",
+      "awards": [
+        "LEED Platinum Certification 2020"
+      ],
+      "amenities": [
+        "Green Roof",
+        "Coworking Space",
+        "Bike Storage",
+        "EV Charging"
+      ],
       "unitTypes": [
-        { "type": "Studio", "count": 45, "avgRent": 2800 },
-        { "type": "1BR", "count": 142, "avgRent": 3900 },
-        { "type": "2BR", "count": 98, "avgRent": 5200 },
-        { "type": "3BR", "count": 27, "avgRent": 7500 }
+        {
+          "type": "Studio",
+          "count": 45,
+          "avgRent": 2800
+        },
+        {
+          "type": "1BR",
+          "count": 142,
+          "avgRent": 3900
+        },
+        {
+          "type": "2BR",
+          "count": 98,
+          "avgRent": 5200
+        },
+        {
+          "type": "3BR",
+          "count": 27,
+          "avgRent": 7500
+        }
       ],
       "financials": {
         "noi": 9200000,
@@ -64,14 +138,24 @@
         "cashOnCash": 7.1,
         "debtService": 5100000
       },
-      "position": { "x": 5, "y": 0, "z": -25 },
-      "scale": { "x": 3, "y": 5, "z": 3 }
+      "position": {
+        "x": 5,
+        "y": 0,
+        "z": -25
+      },
+      "scale": {
+        "x": 3,
+        "y": 5,
+        "z": 3
+      }
     },
     {
       "id": "prop-003",
       "name": "Slate Residences",
       "type": "Boutique Residential",
+      "tagline": "Intimate luxury in the heart of SoHo",
       "location": "SoHo, NY",
+      "neighborhood": "SoHo",
       "value": 98000000,
       "units": 64,
       "floors": 12,
@@ -81,11 +165,35 @@
       "sqft": 95000,
       "riskScore": 8,
       "description": "Intimate luxury residences in historic SoHo district",
-      "amenities": ["Private Terraces", "Wine Cellar", "Gallery Space"],
+      "narrative": "Where every residence tells a story",
+      "acquiredYear": 2020,
+      "acquiredValue": 67000000,
+      "appreciationPercent": 46,
+      "architect": "Adjaye Associates",
+      "awards": [
+        "Architectural Digest April 2024"
+      ],
+      "amenities": [
+        "Private Terraces",
+        "Wine Cellar",
+        "Gallery Space"
+      ],
       "unitTypes": [
-        { "type": "1BR", "count": 18, "avgRent": 6500 },
-        { "type": "2BR", "count": 32, "avgRent": 9800 },
-        { "type": "Loft", "count": 14, "avgRent": 15000 }
+        {
+          "type": "1BR",
+          "count": 18,
+          "avgRent": 6500
+        },
+        {
+          "type": "2BR",
+          "count": 32,
+          "avgRent": 9800
+        },
+        {
+          "type": "Loft",
+          "count": 14,
+          "avgRent": 15000
+        }
       ],
       "financials": {
         "noi": 5800000,
@@ -93,14 +201,24 @@
         "cashOnCash": 9.4,
         "debtService": 2900000
       },
-      "position": { "x": -3, "y": 0, "z": -40 },
-      "scale": { "x": 2.5, "y": 3, "z": 2.5 }
+      "position": {
+        "x": -3,
+        "y": 0,
+        "z": -40
+      },
+      "scale": {
+        "x": 2.5,
+        "y": 3,
+        "z": 2.5
+      }
     },
     {
       "id": "prop-004",
       "name": "Apex Business Center",
       "type": "Commercial Office",
+      "tagline": "Where ambition finds its address",
       "location": "Midtown, NY",
+      "neighborhood": "Midtown",
       "value": 210000000,
       "units": 1850,
       "floors": 38,
@@ -110,12 +228,41 @@
       "sqft": 520000,
       "riskScore": 24,
       "description": "Class A office tower with premium corporate tenants",
-      "amenities": ["Conference Center", "Executive Dining", "Fitness Center", "Helipad"],
+      "narrative": "Spaces that inspire the next breakthrough",
+      "acquiredYear": 2017,
+      "acquiredValue": 168000000,
+      "appreciationPercent": 25,
+      "architect": "SOM",
+      "awards": [
+        "Best Commercial Building NYC 2019"
+      ],
+      "amenities": [
+        "Conference Center",
+        "Executive Dining",
+        "Fitness Center",
+        "Helipad"
+      ],
       "unitTypes": [
-        { "type": "Small Suite", "count": 420, "avgRent": 4200 },
-        { "type": "Medium Suite", "count": 890, "avgRent": 6800 },
-        { "type": "Large Suite", "count": 380, "avgRent": 12000 },
-        { "type": "Full Floor", "count": 160, "avgRent": 85000 }
+        {
+          "type": "Small Suite",
+          "count": 420,
+          "avgRent": 4200
+        },
+        {
+          "type": "Medium Suite",
+          "count": 890,
+          "avgRent": 6800
+        },
+        {
+          "type": "Large Suite",
+          "count": 380,
+          "avgRent": 12000
+        },
+        {
+          "type": "Full Floor",
+          "count": 160,
+          "avgRent": 85000
+        }
       ],
       "financials": {
         "noi": 14200000,
@@ -123,14 +270,24 @@
         "cashOnCash": 6.9,
         "debtService": 7800000
       },
-      "position": { "x": 10, "y": 0, "z": -55 },
-      "scale": { "x": 2.8, "y": 6.5, "z": 2.8 }
+      "position": {
+        "x": 10,
+        "y": 0,
+        "z": -55
+      },
+      "scale": {
+        "x": 2.8,
+        "y": 6.5,
+        "z": 2.8
+      }
     },
     {
       "id": "prop-005",
       "name": "Waterfront Collection",
       "type": "Luxury Condominiums",
+      "tagline": "Where the city meets the sea",
       "location": "Hudson Yards, NY",
+      "neighborhood": "Hudson Yards",
       "value": 89000000,
       "units": 434,
       "floors": 45,
@@ -140,12 +297,41 @@
       "sqft": 280000,
       "riskScore": 15,
       "description": "Waterfront condominiums with private marina access",
-      "amenities": ["Marina", "Beach Club", "Kayak Launch", "Sunset Lounge"],
+      "narrative": "Life, elevated by the water's edge",
+      "acquiredYear": 2021,
+      "acquiredValue": 72000000,
+      "appreciationPercent": 24,
+      "architect": "Heatherwick Studio",
+      "awards": [
+        "Best Waterfront Development 2023"
+      ],
+      "amenities": [
+        "Marina",
+        "Beach Club",
+        "Kayak Launch",
+        "Sunset Lounge"
+      ],
       "unitTypes": [
-        { "type": "1BR", "count": 125, "avgRent": 4100 },
-        { "type": "2BR", "count": 198, "avgRent": 5800 },
-        { "type": "3BR", "count": 86, "avgRent": 8200 },
-        { "type": "Townhouse", "count": 25, "avgRent": 18000 }
+        {
+          "type": "1BR",
+          "count": 125,
+          "avgRent": 4100
+        },
+        {
+          "type": "2BR",
+          "count": 198,
+          "avgRent": 5800
+        },
+        {
+          "type": "3BR",
+          "count": 86,
+          "avgRent": 8200
+        },
+        {
+          "type": "Townhouse",
+          "count": 25,
+          "avgRent": 18000
+        }
       ],
       "financials": {
         "noi": 5200000,
@@ -153,8 +339,16 @@
         "cashOnCash": 8.8,
         "debtService": 2600000
       },
-      "position": { "x": -12, "y": 0, "z": -70 },
-      "scale": { "x": 3.2, "y": 7, "z": 2 }
+      "position": {
+        "x": -12,
+        "y": 0,
+        "z": -70
+      },
+      "scale": {
+        "x": 3.2,
+        "y": 7,
+        "z": 2
+      }
     }
   ],
   "analytics": {
@@ -162,21 +356,85 @@
     "portfolioHealth": 94,
     "marketPosition": "Premium",
     "riskRating": "Low-Moderate",
+    "propertiesCount": 5,
+    "neighborhoodsCount": 5,
     "revenueTimeline": [
-      { "month": "Jan", "revenue": 3850000 },
-      { "month": "Feb", "revenue": 3920000 },
-      { "month": "Mar", "revenue": 4050000 },
-      { "month": "Apr", "revenue": 4100000 },
-      { "month": "May", "revenue": 4180000 },
-      { "month": "Jun", "revenue": 4250000 }
+      {
+        "month": "Jan",
+        "revenue": 3850000
+      },
+      {
+        "month": "Feb",
+        "revenue": 3920000
+      },
+      {
+        "month": "Mar",
+        "revenue": 4050000
+      },
+      {
+        "month": "Apr",
+        "revenue": 4100000
+      },
+      {
+        "month": "May",
+        "revenue": 4180000
+      },
+      {
+        "month": "Jun",
+        "revenue": 4250000
+      }
     ],
     "occupancyTrend": [
-      { "month": "Jan", "rate": 91.2 },
-      { "month": "Feb", "rate": 92.1 },
-      { "month": "Mar", "rate": 92.8 },
-      { "month": "Apr", "rate": 93.5 },
-      { "month": "May", "rate": 93.9 },
-      { "month": "Jun", "rate": 94.2 }
+      {
+        "month": "Jan",
+        "rate": 91.2
+      },
+      {
+        "month": "Feb",
+        "rate": 92.1
+      },
+      {
+        "month": "Mar",
+        "rate": 92.8
+      },
+      {
+        "month": "Apr",
+        "rate": 93.5
+      },
+      {
+        "month": "May",
+        "rate": 93.9
+      },
+      {
+        "month": "Jun",
+        "rate": 94.2
+      }
+    ],
+    "historicalAppreciation": [
+      {
+        "year": 2019,
+        "value": 612000000
+      },
+      {
+        "year": 2020,
+        "value": 658000000
+      },
+      {
+        "year": 2021,
+        "value": 724000000
+      },
+      {
+        "year": 2022,
+        "value": 785000000
+      },
+      {
+        "year": 2023,
+        "value": 821000000
+      },
+      {
+        "year": 2024,
+        "value": 847000000
+      }
     ]
   }
 }

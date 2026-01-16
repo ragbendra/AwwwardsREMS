@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './Navbar';
 import PropertyCard from './PropertyCard';
-import GallerySection from './GallerySection';
+import LayeredGallery from '@/components/LayeredGallery';
 import Footer from './Footer';
 import AudioController from './AudioController';
 import { CompareView } from '@/components/CompareMode';
@@ -341,15 +341,25 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Gallery Section - Shows during analytics/overview */}
-            {currentScene >= 4 && (
-                <GallerySection scrollProgress={scrollProgress} />
-            )}
+            {/* Immersive Layered Gallery - Scene 4 */}
+            <LayeredGallery
+                scrollProgress={scrollProgress}
+                isActive={currentScene >= 4 && scrollProgress < 0.9}
+            />
 
             {/* Footer - Shows at end */}
-            {currentScene >= 5 && scrollProgress > 0.85 && (
-                <Footer />
-            )}
+            <AnimatePresence>
+                {currentScene >= 5 && scrollProgress > 0.85 && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        id="footer"
+                    >
+                        <Footer />
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Audio Controller */}
             <AudioController scrollProgress={scrollProgress} currentScene={currentScene} />

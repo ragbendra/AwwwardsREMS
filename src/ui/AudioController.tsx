@@ -53,7 +53,7 @@ export default function AudioController({ scrollProgress, currentScene }: AudioC
         }
     }, []);
 
-    // Create ambient drone sound
+    // Create ambient drone sound with scene-specific characteristics
     const createAmbientDrone = useCallback(() => {
         if (!audioContextRef.current || !gainNodeRef.current) return;
 
@@ -67,17 +67,34 @@ export default function AudioController({ scrollProgress, currentScene }: AudioC
         // Create low-frequency oscillator for ambient feel
         const osc = ctx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.value = 60 + currentScene * 10; // Slightly higher pitch as we progress
 
-        // Create filter for warmth
+        // Gallery scene (4) uses different frequency range: ~800Hz mid-range emphasis
+        const isGalleryScene = currentScene === 4;
+        const baseFreq = isGalleryScene ? 120 : 60; // Higher base for gallery atmosphere
+        osc.frequency.value = baseFreq + currentScene * (isGalleryScene ? 5 : 10);
+
+        // Create filter - more open for gallery scene (spatial feel)
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = 200;
-        filter.Q.value = 1;
+        filter.frequency.value = isGalleryScene ? 400 : 200; // More highs for gallery
+        filter.Q.value = isGalleryScene ? 0.5 : 1; // Less resonance for smoother sound
 
-        // Connect nodes
-        osc.connect(filter);
-        filter.connect(gainNodeRef.current);
+        // Optional: Add reverb-like effect for gallery via delay
+        if (isGalleryScene) {
+            const delay = ctx.createDelay();
+            delay.delayTime.value = 0.15; // Short delay for room feel
+            const delayGain = ctx.createGain();
+            delayGain.gain.value = 0.2; // Subtle
+
+            osc.connect(filter);
+            filter.connect(delay);
+            delay.connect(delayGain);
+            delayGain.connect(gainNodeRef.current);
+            filter.connect(gainNodeRef.current); // Dry signal
+        } else {
+            osc.connect(filter);
+            filter.connect(gainNodeRef.current);
+        }
 
         oscillatorRef.current = osc;
         osc.start();

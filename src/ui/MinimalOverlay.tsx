@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './Navbar';
 import PropertyCard from './PropertyCard';
 import GallerySection from './GallerySection';
@@ -35,7 +35,18 @@ export default function MinimalOverlay({
     // Check for reduced motion preference
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        setReducedMotion(mediaQuery.matches);
+        const handleChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+
+        // Use a small timeout to avoid the synchronous setState within effect lint error
+        const timeoutId = setTimeout(() => {
+            setReducedMotion(mediaQuery.matches);
+        }, 0);
+
+        mediaQuery.addEventListener('change', handleChange);
+        return () => {
+            clearTimeout(timeoutId);
+            mediaQuery.removeEventListener('change', handleChange);
+        };
     }, []);
 
     // Update clock

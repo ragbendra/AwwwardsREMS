@@ -30,12 +30,20 @@ export default function ExperienceProvider() {
     // Check for reduced motion preference
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        setReducedMotion(mediaQuery.matches);
+        const updateMotion = (matches: boolean) => setReducedMotion(matches);
 
-        const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+        // Defer initial setup to avoid sync setState in effect error
+        const timeoutId = setTimeout(() => {
+            updateMotion(mediaQuery.matches);
+        }, 0);
+
+        const handler = (e: MediaQueryListEvent) => updateMotion(e.matches);
         mediaQuery.addEventListener('change', handler);
 
-        return () => mediaQuery.removeEventListener('change', handler);
+        return () => {
+            clearTimeout(timeoutId);
+            mediaQuery.removeEventListener('change', handler);
+        };
     }, []);
 
     const handlePreloaderComplete = useCallback(() => {

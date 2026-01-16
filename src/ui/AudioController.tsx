@@ -3,6 +3,13 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Add type for webkitAudioContext
+declare global {
+    interface Window {
+        webkitAudioContext: typeof AudioContext;
+    }
+}
+
 interface AudioControllerProps {
     scrollProgress: number;
     currentScene: number;
@@ -31,13 +38,18 @@ export default function AudioController({ scrollProgress, currentScene }: AudioC
         if (typeof window === 'undefined' || audioContextRef.current) return;
 
         try {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                console.warn('Web Audio API not supported');
+                return;
+            }
+            audioContextRef.current = new AudioContextClass();
             gainNodeRef.current = audioContextRef.current.createGain();
             gainNodeRef.current.connect(audioContextRef.current.destination);
             gainNodeRef.current.gain.value = 0;
             setIsAudioEnabled(true);
-        } catch (e) {
-            console.warn('Web Audio API not supported');
+        } catch (error) {
+            console.warn('Web Audio API error:', error);
         }
     }, []);
 

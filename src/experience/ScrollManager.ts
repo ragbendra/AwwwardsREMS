@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState, useSyncExternalStore } from 'react';
 import { gsap } from 'gsap';
 import Lenis from 'lenis';
 
@@ -156,7 +156,16 @@ let scrollManagerInstance: ScrollManager | null = null;
 
 export function getScrollManager(): ScrollManager {
     if (typeof window === 'undefined') {
-        return new ScrollManager();
+        // Return dummy for SSR
+        return {
+            subscribe: () => () => { },
+            getState: () => ({ progress: 0, velocity: 0, direction: 'idle' as const, sceneIndex: 0, sceneProgress: 0 }),
+            scrollTo: () => { },
+            scrollToScene: () => { },
+            stop: () => { },
+            start: () => { },
+            destroy: () => { },
+        } as unknown as ScrollManager;
     }
 
     if (!scrollManagerInstance) {
@@ -168,36 +177,15 @@ export function getScrollManager(): ScrollManager {
 
 // React hook for scroll state
 export function useScrollState(): ScrollState {
-    const stateRef = useRef<ScrollState>({
-        progress: 0,
-        velocity: 0,
-        direction: 'idle',
-        sceneIndex: 0,
-        sceneProgress: 0,
-    });
-    const forceUpdate = useRef<() => void>(() => { });
+    const manager = getScrollManager();
 
-    useEffect(() => {
-        const [, setTick] = [0, (n: number) => { }];
-        let tick = 0;
-        forceUpdate.current = () => setTick(++tick);
-
-        const manager = getScrollManager();
-
-        const unsubscribe = manager.subscribe((state) => {
-            stateRef.current = state;
-            // Throttle re-renders
-            if (Math.abs(state.velocity) > 0.01) {
-                forceUpdate.current();
-            }
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-
-    return stateRef.current;
+    return useSyncExternalStore(
+        useCallback((onStoreChange: () => void) => {
+            return manager.subscribe(() => onStoreChange());
+        }, [manager]),
+        () => manager.getState(),
+        () => ({ progress: 0, velocity: 0, direction: 'idle', sceneIndex: 0, sceneProgress: 0 }) // Server snapshot
+    );
 }
 
 // Hook for scroll-triggered animations
@@ -206,7 +194,10 @@ export function useScrollProgress(
     deps: React.DependencyList = []
 ): void {
     const callbackRef = useRef(callback);
-    callbackRef.current = callback;
+
+    useEffect(() => {
+        callbackRef.current = callback;
+    }, [callback]);
 
     useEffect(() => {
         const manager = getScrollManager();

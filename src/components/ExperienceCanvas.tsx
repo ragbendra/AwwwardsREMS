@@ -133,7 +133,11 @@ export default function ExperienceCanvas({
 
         // Start animation
         experienceRef.current.raf = requestAnimationFrame(animate);
-        setIsLoaded(true);
+
+        // Defer loaded state to avoid sync setState in effect error
+        requestAnimationFrame(() => {
+            setIsLoaded(true);
+        });
 
         // Handle resize
         const handleResize = () => {

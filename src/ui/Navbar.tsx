@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { useState } from 'react';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 
 interface NavbarProps {
     isVisible: boolean;
@@ -28,13 +28,6 @@ export default function Navbar({ isVisible, currentTime, scrollProgress }: Navba
     const springConfig = { damping: 25, stiffness: 300 };
     const x = useSpring(mouseX, springConfig);
     const y = useSpring(mouseY, springConfig);
-
-    // Progress bar animation
-    const progressWidth = useTransform(
-        useMotionValue(scrollProgress),
-        [0, 1],
-        ['0%', '100%']
-    );
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, itemId: string) => {
         if (hoveredItem !== itemId) return;

@@ -372,7 +372,7 @@ export function createRevenueStreamAnimation(
     };
 }
 
-export default {
+const timelines = {
     MOTION,
     createPreloaderTimeline,
     createHeroRevealTimeline,
@@ -385,3 +385,5 @@ export default {
     createBuildingEntranceTimeline,
     createRevenueStreamAnimation,
 };
+
+export default timelines;

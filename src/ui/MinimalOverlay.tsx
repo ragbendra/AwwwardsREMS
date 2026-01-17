@@ -32,11 +32,12 @@ interface MinimalOverlayProps {
 }
 
 // Hero headlines with staggered reveal
+// Stagger: 0.3s intervals, 0.5s animation duration, ~1.6s total settle
 const heroHeadlines = [
     { text: "MERIDIAN CAPITAL", delay: 0 },
-    { text: `$${(portfolioData.portfolio.totalValue / 1000000000).toFixed(1)}B IN ARCHITECTURAL INTELLIGENCE`, delay: 0.8 },
-    { text: `${portfolioData.portfolio.occupancyRate}% AVERAGE OCCUPANCY`, delay: 1.6 },
-    { text: "YOUR NEXT LANDMARK AWAITS", delay: 2.4 },
+    { text: `$${(portfolioData.portfolio.totalValue / 1000000000).toFixed(1)}B IN ARCHITECTURAL INTELLIGENCE`, delay: 0.3 },
+    { text: `${portfolioData.portfolio.occupancyRate}% AVERAGE OCCUPANCY`, delay: 0.6 },
+    { text: "YOUR NEXT LANDMARK AWAITS", delay: 0.9 },
 ];
 
 export default function MinimalOverlay({
@@ -50,6 +51,7 @@ export default function MinimalOverlay({
     const [reducedMotion, setReducedMotion] = useState(false);
     const [heroIndex, setHeroIndex] = useState(0);
     const [isCompareMode, setIsCompareMode] = useState(false);
+    const [heroAnimationComplete, setHeroAnimationComplete] = useState(false);
 
     // Check for reduced motion preference
     useEffect(() => {
@@ -106,16 +108,21 @@ export default function MinimalOverlay({
         return () => window.removeEventListener('scroll', handleScroll);
     }, [lastScrollY]);
 
-    // Cycle through hero headlines in scene 1
+    // Cycle through hero headlines in scene 1 (time-based entry)
     useEffect(() => {
         if (currentScene !== 1) {
             setHeroIndex(0);
+            setHeroAnimationComplete(false);
             return;
         }
 
         const intervals = heroHeadlines.map((_, index) => {
             return setTimeout(() => {
                 setHeroIndex(index);
+                // Mark animation complete after last headline settles (~0.5s after last delay)
+                if (index === heroHeadlines.length - 1) {
+                    setTimeout(() => setHeroAnimationComplete(true), 500);
+                }
             }, (heroHeadlines[index].delay || 0) * 1000);
         });
 
@@ -124,13 +131,12 @@ export default function MinimalOverlay({
 
     const getSceneLabel = () => {
         switch (currentScene) {
-            case 0: return 'INITIALIZING';
             case 1: return 'MERIDIAN CAPITAL';
             case 2: return 'PORTFOLIO OVERVIEW';
             case 3: return 'PROPERTY FOCUS';
             case 4: return 'ANALYTICS';
             case 5: return 'OVERVIEW';
-            default: return '';
+            default: return 'MERIDIAN CAPITAL';
         }
     };
 
@@ -146,8 +152,9 @@ export default function MinimalOverlay({
         return { text: "Schedule Presentation", icon: "📅" };
     }, [scrollProgress]);
 
-    // Show hero headlines in scene 1
-    const showHero = currentScene === 1 && scrollProgress < 0.15;
+    // Hero visibility: visible on mount, exit delayed to 0.18-0.20
+    // Exit only after animation completes OR scroll reaches threshold
+    const showHero = scrollProgress < 0.20 && (heroAnimationComplete ? scrollProgress < 0.18 : true);
 
     return (
         <>
@@ -180,10 +187,10 @@ export default function MinimalOverlay({
                         {heroHeadlines.slice(0, heroIndex + 1).map((headline, index) => (
                             <motion.div
                                 key={index}
-                                initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
-                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
                                 transition={{
-                                    duration: 0.8,
+                                    duration: 0.5,
                                     delay: index * 0.1,
                                     ease: [0.16, 1, 0.3, 1]
                                 }}
@@ -205,9 +212,9 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Portfolio Overview Intro - Scene 2 */}
+            {/* Portfolio Overview Intro - Scene 2 (exits before property cards appear) */}
             <AnimatePresence>
-                {currentScene === 2 && scrollProgress > 0.2 && scrollProgress < 0.35 && (
+                {scrollProgress > 0.18 && scrollProgress < 0.24 && !propertyData && (
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -255,26 +262,31 @@ export default function MinimalOverlay({
                 animate={{ opacity: 0.6 }}
                 transition={{ duration: 1, delay: 0.5 }}
             >
-                {[0, 1, 2, 3, 4, 5].map((scene) => (
+                {/* Scene dots: 1-5 (hero, portfolio, focus, analytics, overview) */}
+                {[1, 2, 3, 4, 5].map((scene, index) => (
                     <div key={scene}>
                         <div
                             className={`scene-progress__dot ${currentScene === scene ? 'scene-progress__dot--active' : ''
                                 }`}
                         />
-                        {scene < 5 && <div className="scene-progress__line" />}
+                        {index < 4 && <div className="scene-progress__line" />}
                     </div>
                 ))}
             </motion.div>
 
-            {/* Scene Label */}
-            <motion.div
-                className="scene-label"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 0.5, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-            >
-                <span className="scene-label__text">{getSceneLabel()}</span>
-            </motion.div>
+            {/* Scene Label — Opacity-only crossfade */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={getSceneLabel()}
+                    className="scene-label"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.5 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <span className="scene-label__text">{getSceneLabel()}</span>
+                </motion.div>
+            </AnimatePresence>
 
             {/* Property Meta Panel */}
             <AnimatePresence mode="wait">
@@ -283,9 +295,9 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Premium Scroll Indicator */}
+            {/* Scroll Indicator — Visible on initial paint, fades at 18% */}
             <AnimatePresence>
-                {currentScene < 2 && scrollProgress < 0.15 && (
+                {scrollProgress < 0.18 && (
                     <motion.div
                         className="scroll-indicator"
                         initial={{ opacity: 0 }}

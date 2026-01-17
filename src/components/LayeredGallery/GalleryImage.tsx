@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 import { GalleryImageData, LAYER_CONFIG } from './galleryData';
+import { useTransition, useIsSelectedForTransition } from '@/context/TransitionContext';
 
 interface GalleryImageProps {
     image: GalleryImageData;
@@ -22,6 +23,25 @@ export default function GalleryImage({
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const imageRef = useRef<HTMLDivElement>(null);
+
+    // Transition context for scene navigation
+    const { startTransition, isTransitioning } = useTransition();
+    const isSelectedForTransition = useIsSelectedForTransition(image.id);
+
+    // Handle click to transition to detail page
+    const handleClick = useCallback(() => {
+        // Don't trigger if dragging
+        if (isDragging) return;
+
+        // Get bounding rect for FLIP animation
+        if (imageRef.current) {
+            const rect = imageRef.current.getBoundingClientRect();
+            startTransition(image, rect);
+        }
+
+        // Also call legacy onImageClick if provided (for mobile modal fallback)
+        onImageClick?.(image);
+    }, [isDragging, image, startTransition, onImageClick]);
 
     const layerConfig = LAYER_CONFIG[image.layer];
 
@@ -42,7 +62,7 @@ export default function GalleryImage({
         <motion.div
             ref={imageRef}
             className="gallery-image"
-            drag
+            drag={!isTransitioning}
             dragMomentum={false}
             dragElastic={0.1}
             onDragStart={() => setIsDragging(true)}
@@ -62,19 +82,21 @@ export default function GalleryImage({
                 height: `${height}px`,
                 rotate: isReducedMotion ? 0 : image.rotation,
                 filter: layerConfig.blur > 0 ? `blur(${layerConfig.blur}px)` : 'none',
-                opacity: layerConfig.opacity,
+                opacity: isSelectedForTransition ? 0 : layerConfig.opacity,
                 zIndex: isDragging ? 100 : image.layer * 10,
-                cursor: isDragging ? 'grabbing' : 'grab',
+                cursor: isDragging ? 'grabbing' : 'pointer',
+                visibility: isSelectedForTransition ? 'hidden' : 'visible',
             }}
             initial={isReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
             animate={isReducedMotion ? {} : {
-                opacity: layerConfig.opacity,
+                opacity: isSelectedForTransition ? 0 : layerConfig.opacity,
                 scale: isHovered && !isDragging ? 1.05 : image.scale,
             }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] as const }}
+            onClick={handleClick}
             onHoverStart={() => !isDragging && setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
-            aria-label={`${image.title} - ${image.location}. Drag to reposition.`}
+            aria-label={`${image.title} - ${image.location}. Click to view details, drag to reposition.`}
         >
             {/* Skeleton placeholder */}
             {!isLoaded && !hasError && (

@@ -3,10 +3,12 @@
 > An Awwwards-worthy, cinematic WebGL experience for premium real estate portfolio visualization.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.1.2-black)
-![Three.js](https://img.shields.io/badge/Three.js-r170-blue)
+![Three.js](https://img.shields.io/badge/Three.js-r182-blue)
+![React](https://img.shields.io/badge/React-19.2-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![GSAP](https://img.shields.io/badge/GSAP-3.x-green)
+![GSAP](https://img.shields.io/badge/GSAP-3.14-green)
 ![Framer Motion](https://img.shields.io/badge/Framer_Motion-12.x-purple)
+![React Three Fiber](https://img.shields.io/badge/R3F-9.5-orange)
 
 ---
 
@@ -35,9 +37,12 @@
 
 **Meridian Capital** is a premium, immersive web experience designed to showcase a high-end real estate investment portfolio. The site features:
 
-- **3D WebGL Environment**: An abstract architectural landscape rendered with Three.js
+- **3D WebGL Environment**: An abstract architectural landscape rendered with Three.js & React Three Fiber
 - **Scroll-Driven Narrative**: The entire experience unfolds as users scroll
-- **Cinematic Transitions**: Smooth camera movements along spline paths
+- **Cinematic Scene Transitions**: Seamless overlay-based property detail views with no page reloads
+- **Dynamic Property Routes**: Individual property pages with deep linking (`/property/[id]`)
+- **Layered Gallery System**: Parallax depth layers with interactive image gallery
+- **Data Visualization Components**: Real-time animated occupancy grids, value counters, and tenant flows
 - **Premium UI**: Minimalist design with micro-interactions using Framer Motion
 - **Procedural Audio**: Web Audio API-based ambient soundscape that reacts to scene changes
 - **Film-Quality Post-Processing**: Bloom, chromatic aberration, and film grain effects
@@ -78,22 +83,29 @@ The design follows **Architectural Minimalism** principles:
 
 | Category | Technology | Purpose |
 |----------|------------|---------|
-| Framework | **Next.js 16** (App Router) | SSR, routing, optimization |
-| 3D Engine | **Three.js** | WebGL rendering |
-| Animation | **GSAP** | Timeline-based animations |
-| Animation | **Framer Motion** | React component animations |
-| Smooth Scroll | **Lenis** | Inertia-based scrolling |
-| Styling | **CSS Custom Properties** | Design tokens |
-| Language | **TypeScript** | Type safety |
+| Framework | **Next.js 16.1.2** (App Router) | SSR, routing, optimization |
+| React | **React 19.2.3** | UI components |
+| 3D Engine | **Three.js r182** | WebGL rendering |
+| 3D Integration | **React Three Fiber 9.5** | React renderer for Three.js |
+| 3D Helpers | **Drei 10.7** | Useful R3F abstractions |
+| Animation | **GSAP 3.14** | Timeline-based animations |
+| Animation | **Framer Motion 12.26** | React component animations |
+| Smooth Scroll | **Lenis 1.3** | Inertia-based scrolling |
+| Styling | **CSS Custom Properties + Tailwind 4** | Design tokens |
+| Language | **TypeScript 5** | Type safety |
 | Fonts | **Google Fonts** (Outfit, Inter) | Typography |
 
 ### Key Dependencies
 ```json
 {
-  "three": "^0.170.0",
-  "gsap": "^3.12.7",
-  "framer-motion": "^12.0.0",
-  "lenis": "^1.1.18"
+  "next": "16.1.2",
+  "react": "19.2.3",
+  "three": "^0.182.0",
+  "@react-three/fiber": "^9.5.0",
+  "@react-three/drei": "^10.7.7",
+  "gsap": "^3.14.2",
+  "framer-motion": "^12.26.2",
+  "lenis": "^1.3.17"
 }
 ```
 
@@ -156,11 +168,31 @@ AwwREMS/
 │   ├── app/
 │   │   ├── layout.tsx             # Root layout with fonts & metadata
 │   │   ├── page.tsx               # Main page with scroll sections
-│   │   └── globals.css            # Tailwind imports
+│   │   ├── globals.css            # Tailwind imports
+│   │   └── property/
+│   │       └── [id]/
+│   │           └── page.tsx       # Dynamic property detail page
 │   │
 │   ├── components/
 │   │   ├── ExperienceCanvas.tsx   # Three.js canvas component
-│   │   └── ExperienceProvider.tsx # State management wrapper
+│   │   ├── ExperienceProvider.tsx # State management wrapper
+│   │   ├── PropertyDetailOverlay.tsx   # Fullscreen gallery modal
+│   │   ├── TransitionOverlay.tsx       # Cinematic scene transitions
+│   │   ├── CompareMode/           # Property comparison components
+│   │   ├── DataViz/               # Data visualization components
+│   │   │   ├── OccupancyGrid.tsx  # Animated occupancy visualization
+│   │   │   ├── TenantRiver.tsx    # Flowing tenant data stream
+│   │   │   ├── ValueCounter.tsx   # Animated currency counter
+│   │   │   └── index.ts
+│   │   └── LayeredGallery/        # Parallax gallery system
+│   │       ├── index.tsx          # Main gallery component
+│   │       ├── DepthLayer.tsx     # Parallax depth layer
+│   │       ├── GalleryImage.tsx   # Interactive gallery image
+│   │       ├── ProgressBar.tsx    # Gallery progress indicator
+│   │       └── galleryData.ts     # Gallery configuration data
+│   │
+│   ├── context/
+│   │   └── TransitionContext.tsx  # Scene transition state management
 │   │
 │   ├── experience/
 │   │   ├── index.ts               # Module exports
@@ -170,6 +202,7 @@ AwwREMS/
 │   │   └── ScrollManager.ts       # Lenis integration & React hooks
 │   │
 │   ├── scenes/
+│   │   ├── index.ts               # Module exports
 │   │   ├── ExperienceScene.ts     # Main 3D scene with properties
 │   │   └── ScenePrimitives.ts     # Reusable 3D building blocks
 │   │
@@ -245,7 +278,30 @@ useScrollProgress((progress, state) => {
 
 ---
 
-### 2. CameraController (`src/experience/CameraController.ts`)
+### 2. TransitionContext (`src/context/TransitionContext.tsx`)
+
+Manages seamless scene transitions between main view and property details.
+
+**Key Features:**
+- Overlay-based navigation (no full page reloads)
+- Preserves scroll position during property view
+- Smooth enter/exit animations
+- URL synchronization with history API
+
+**Usage:**
+```typescript
+const { openPropertyOverlay, closePropertyOverlay, isOverlayOpen } = useTransition();
+
+// Open property detail as overlay
+openPropertyOverlay('property-id');
+
+// Close and return to main view
+closePropertyOverlay();
+```
+
+---
+
+### 3. CameraController (`src/experience/CameraController.ts`)
 
 Controls camera movement along a Catmull-Rom spline path.
 
@@ -264,7 +320,7 @@ Start: (0, 15, 50)  →  (0, 25, 30)  →  (0, 50, 0)  →  End: (0, 100, -20)
 
 ---
 
-### 3. Renderer (`src/experience/Renderer.ts`)
+### 4. Renderer (`src/experience/Renderer.ts`)
 
 WebGL renderer with post-processing pipeline.
 
@@ -282,7 +338,7 @@ grainPass.uniforms.uTime.value = time * 0.001;
 
 ---
 
-### 4. ExperienceScene (`src/scenes/ExperienceScene.ts`)
+### 5. ExperienceScene (`src/scenes/ExperienceScene.ts`)
 
 The main 3D scene containing all visible objects.
 
@@ -379,6 +435,58 @@ Web Audio API-based ambient sound system.
 - Accessible mute/unmute toggle
 - Animated ring indicator when active
 - Tooltip on hover
+
+---
+
+### PropertyDetailOverlay (`src/components/PropertyDetailOverlay.tsx`)
+Fullscreen gallery modal for property details.
+
+**Features:**
+- High-authority, visually restrained design
+- Structured property information display
+- Core metrics with gold-accented figures
+- Architectural and capital context
+- Smooth enter/exit transitions (0.8s/0.6s)
+- Portal-based rendering for proper z-index
+
+---
+
+### LayeredGallery (`src/components/LayeredGallery/`)
+Immersive parallax gallery system.
+
+**Components:**
+- `DepthLayer.tsx` - Parallax depth effect layer
+- `GalleryImage.tsx` - Interactive gallery image with hover states
+- `ProgressBar.tsx` - Gallery navigation progress
+- `galleryData.ts` - Property image configurations
+
+**Features:**
+- Multi-layer depth parallax effect
+- Smooth image transitions
+- Touch/swipe support
+- Keyboard navigation
+
+---
+
+### DataViz (`src/components/DataViz/`)
+Animated data visualization components.
+
+| Component | Description |
+|-----------|-------------|
+| `OccupancyGrid.tsx` | Animated grid showing occupancy rates |
+| `TenantRiver.tsx` | Flowing visualization of tenant data |
+| `ValueCounter.tsx` | Animated currency value display |
+
+---
+
+### TransitionOverlay (`src/components/TransitionOverlay.tsx`)
+Cinematic scene transition effects.
+
+**Features:**
+- Smooth fade/blur transitions
+- Content preservation during navigation
+- Seamless back navigation
+- No loading screens during transitions
 
 ---
 
@@ -671,11 +779,18 @@ When `prefers-reduced-motion: reduce` is enabled:
 
 ## 🔮 Future Enhancements
 
-### Phase 2 Features
+### Completed Features ✅
+- [x] Individual property detail pages with overlay system
+- [x] Cinematic scene transitions (no page reloads)
+- [x] Dynamic routing (`/property/[id]`)
+- [x] Data visualization components
+- [x] Layered parallax gallery system
+
+### Phase 2 Features (Upcoming)
 - [ ] Custom WebGL cursor with distortion effect
 - [ ] Shader-based page transitions
-- [ ] Individual property detail pages
 - [ ] CMS integration (Sanity/Contentful)
+- [ ] Property comparison mode
 
 ### Phase 3 Features
 - [ ] 3D property model viewer
@@ -684,6 +799,7 @@ When `prefers-reduced-motion: reduce` is enabled:
 - [ ] Multi-language support
 
 ### Award Submission Checklist
+- [x] Lighthouse score 90+
 - [ ] Lighthouse score 95+
 - [ ] Mobile responsiveness verified
 - [ ] Cross-browser testing (Chrome, Safari, Firefox)
@@ -701,10 +817,13 @@ MIT License - See [LICENSE](LICENSE) for details.
 ## 🙏 Credits
 
 - Design Inspiration: [Awwwards](https://awwwards.com)
-- 3D Engine: [Three.js](https://threejs.org)
+- 3D Engine: [Three.js](https://threejs.org) + [React Three Fiber](https://docs.pmnd.rs/react-three-fiber)
 - Animation: [GSAP](https://greensock.com) + [Framer Motion](https://framer.com/motion)
+- Smooth Scroll: [Lenis](https://lenis.studiofreight.com)
 - Fonts: [Google Fonts](https://fonts.google.com)
 
 ---
 
 *Built with ❤️ for premium digital experiences.*
+
+*Last Updated: January 17, 2026*

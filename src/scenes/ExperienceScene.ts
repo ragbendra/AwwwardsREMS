@@ -10,6 +10,9 @@ import {
     createLighting,
     createDataParticles,
     createTextPlane,
+    createFarDepthGrid,
+    createMidFogPlane,
+    createVolumetricCone,
 } from './ScenePrimitives';
 
 export interface PropertyMesh extends THREE.Group {
@@ -38,13 +41,23 @@ export class ExperienceScene {
 
     private fogVolume: THREE.Mesh | null = null;
     private dataParticles: THREE.Points | null = null;
-    private heroText: THREE.Mesh | null = null;
-    private subtitleText: THREE.Mesh | null = null;
+    // All 3D hero text removed per cinematic audit (2D headlines provide brand authority)
     private lighting: THREE.Group | null = null;
     private ambientLight: THREE.AmbientLight | null = null;
     private directionalLight: THREE.DirectionalLight | null = null;
     private groundPlane: THREE.Group | null = null;
+    private farDepthGrid: THREE.Group | null = null;
+    private midFogPlane: THREE.Mesh | null = null;
     private lastScrollProgress: number = 0;
+    private lastScrollVelocity: number = 0;
+
+    // Property focus system
+    private volumetricCone: THREE.Mesh | null = null;
+    private currentFocusedProperty: PropertyMesh | null = null;
+    private focusTransitionProgress: number = 0;
+    private targetFocusProperty: PropertyMesh | null = null;
+    private focusTransitionStartTime: number = 0;
+    private readonly FOCUS_TRANSITION_DURATION = 1.5; // 1.5 second crossfade
 
     constructor() {
         this.scene = new THREE.Scene();
@@ -82,14 +95,14 @@ export class ExperienceScene {
         );
         this.scene.add(this.fogVolume);
 
-        // Add hero text planes
-        this.heroText = createTextPlane('MERIDIAN', 3);
-        this.heroText.position.set(0, 4, -5);
-        this.scene.add(this.heroText);
+        // All 3D hero text removed per cinematic audit (2D headlines provide brand authority)
 
-        this.subtitleText = createTextPlane('CAPITAL PORTFOLIO', 1.5);
-        this.subtitleText.position.set(0, 1.5, -5);
-        this.scene.add(this.subtitleText);
+        // Hero spatial depth layers
+        this.farDepthGrid = createFarDepthGrid();
+        this.scene.add(this.farDepthGrid);
+
+        this.midFogPlane = createMidFogPlane(this.materials);
+        this.scene.add(this.midFogPlane);
 
         // Create property monoliths (initially below ground)
         this.createPropertyMonoliths();
@@ -102,6 +115,10 @@ export class ExperienceScene {
         );
         this.dataParticles.position.set(0, 0, -50);
         this.scene.add(this.dataParticles);
+
+        // Volumetric light cone for property focus
+        this.volumetricCone = createVolumetricCone();
+        this.scene.add(this.volumetricCone);
     }
 
     private createPropertyMonoliths(): void {
@@ -139,6 +156,11 @@ export class ExperienceScene {
     }
 
     update(time: number, scrollProgress: number): void {
+        // Calculate clamped scroll velocity (delta-based, no spikes/jitter)
+        const scrollDelta = scrollProgress - this.lastScrollProgress;
+        // Clamp velocity to safe bounds: [-0.01, 0.01] per frame
+        this.lastScrollVelocity = Math.max(-0.01, Math.min(0.01, scrollDelta));
+
         // Update temporal atmosphere based on scroll
         this.updateAtmosphere(scrollProgress);
 
@@ -150,14 +172,133 @@ export class ExperienceScene {
         // Update particles with enhanced motion
         this.updateParticles(time, scrollProgress);
 
-        // Update hero text opacity
-        this.updateHeroText(scrollProgress);
+        // Update hero depth layers with parallax velocity mapping
+        this.updateDepthLayers(time);
 
         // Animate buildings rising based on scroll
         this.updateBuildingAnimations(time, scrollProgress);
 
+        // Update property focus (emissive + volumetric light)
+        this.updatePropertyFocus(time, scrollProgress);
+
         // Store for delta calculations
         this.lastScrollProgress = scrollProgress;
+    }
+
+    /**
+     * Update hero depth layers with scroll parallax
+     * Far grid: 0.3x, Mid fog: 0.6x scroll velocity
+     */
+    private updateDepthLayers(time: number): void {
+        const velocity = this.lastScrollVelocity;
+
+        // Far depth grid — 0.3x scroll velocity parallax
+        if (this.farDepthGrid) {
+            this.farDepthGrid.position.y += velocity * 0.3 * 100;
+            // Keep within bounds
+            if (Math.abs(this.farDepthGrid.position.y) > 50) {
+                this.farDepthGrid.position.y *= 0.95;
+            }
+        }
+
+        // Mid fog plane — 0.6x scroll velocity parallax + slow lateral drift
+        if (this.midFogPlane) {
+            this.midFogPlane.position.y += velocity * 0.6 * 100;
+            // Slow lateral drift (not tied to scroll)
+            this.midFogPlane.position.x = Math.sin(time * 0.1) * 5;
+
+            // Update fog shader time uniform
+            if (this.midFogPlane.material instanceof THREE.ShaderMaterial) {
+                this.midFogPlane.material.uniforms.uTime.value = time;
+            }
+
+            // Keep within bounds
+            if (Math.abs(this.midFogPlane.position.y - 10) > 30) {
+                this.midFogPlane.position.y = 10 + (this.midFogPlane.position.y - 10) * 0.95;
+            }
+        }
+    }
+
+    /**
+     * Update property focus system
+     * - Detects hero property based on scroll position
+     * - Modulates emissive intensity (1.4x hero, 0.7x others)
+     * - Positions volumetric light cone above focused property
+     * - Smooth 1.5s crossfade transitions
+     */
+    private updatePropertyFocus(time: number, scrollProgress: number): void {
+        // Only active during portfolio section (0.25 - 0.5)
+        if (scrollProgress < 0.25 || scrollProgress > 0.5) {
+            if (this.volumetricCone) {
+                this.volumetricCone.visible = false;
+                if (this.volumetricCone.material instanceof THREE.ShaderMaterial) {
+                    this.volumetricCone.material.uniforms.uOpacity.value = 0;
+                }
+            }
+            this.currentFocusedProperty = null;
+            return;
+        }
+
+        // Map scroll 0.25-0.5 to property indices
+        const portfolioProgress = (scrollProgress - 0.25) / 0.25;
+        const propertyCount = this.propertyMeshes.size;
+        const targetIndex = Math.min(
+            Math.floor(portfolioProgress * propertyCount),
+            propertyCount - 1
+        );
+
+        const properties = Array.from(this.propertyMeshes.values());
+        const newFocusProperty = properties[targetIndex] || null;
+
+        // Check if focus has changed
+        if (newFocusProperty !== this.targetFocusProperty) {
+            this.targetFocusProperty = newFocusProperty;
+            this.focusTransitionStartTime = time;
+        }
+
+        // Calculate transition progress with ease-in-out cubic
+        const elapsed = time - this.focusTransitionStartTime;
+        const t = Math.min(elapsed / this.FOCUS_TRANSITION_DURATION, 1);
+        this.focusTransitionProgress = t < 0.5
+            ? 4 * t * t * t
+            : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        // Update emissive intensities
+        this.propertyMeshes.forEach((mesh) => {
+            const isFocused = mesh === this.targetFocusProperty;
+            mesh.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.material) {
+                    const mat = child.material as THREE.MeshStandardMaterial;
+                    if (mat.emissive && mat.emissiveIntensity !== undefined) {
+                        const baseline = 0.1;
+                        const targetIntensity = isFocused ? baseline * 1.4 : baseline * 0.7;
+                        mat.emissiveIntensity += (targetIntensity - mat.emissiveIntensity) * 0.05;
+                    }
+                }
+            });
+        });
+
+        // Update volumetric cone
+        if (this.volumetricCone && this.targetFocusProperty) {
+            this.volumetricCone.visible = true;
+            const targetPos = this.targetFocusProperty.position;
+            const targetHeight = this.targetFocusProperty.userData.targetY || 20;
+
+            this.volumetricCone.position.x += (targetPos.x - this.volumetricCone.position.x) * 0.05;
+            this.volumetricCone.position.z += (targetPos.z - this.volumetricCone.position.z) * 0.05;
+            this.volumetricCone.position.y = targetHeight + 15;
+
+            if (this.volumetricCone.material instanceof THREE.ShaderMaterial) {
+                const targetOpacity = this.focusTransitionProgress;
+                const currentOpacity = this.volumetricCone.material.uniforms.uOpacity.value;
+                this.volumetricCone.material.uniforms.uOpacity.value +=
+                    (targetOpacity - currentOpacity) * 0.05;
+            }
+        }
+
+        if (this.focusTransitionProgress >= 1) {
+            this.currentFocusedProperty = this.targetFocusProperty;
+        }
     }
 
     private updateAtmosphere(scrollProgress: number): void {
@@ -250,31 +391,7 @@ export class ExperienceScene {
         this.dataParticles.rotation.y = time * 0.015 + scrollProgress * Math.PI * 0.5;
     }
 
-    private updateHeroText(scrollProgress: number): void {
-        if (this.heroText && this.heroText.material instanceof THREE.MeshBasicMaterial) {
-            const heroOpacity = scrollProgress < 0.05
-                ? 0
-                : scrollProgress < 0.15
-                    ? (scrollProgress - 0.05) * 10
-                    : scrollProgress < 0.25
-                        ? 1 - (scrollProgress - 0.15) * 10
-                        : 0;
-
-            this.heroText.material.opacity = Math.max(0, Math.min(1, heroOpacity));
-        }
-
-        if (this.subtitleText && this.subtitleText.material instanceof THREE.MeshBasicMaterial) {
-            const subtitleOpacity = scrollProgress < 0.08
-                ? 0
-                : scrollProgress < 0.18
-                    ? (scrollProgress - 0.08) * 10
-                    : scrollProgress < 0.28
-                        ? 1 - (scrollProgress - 0.18) * 10
-                        : 0;
-
-            this.subtitleText.material.opacity = Math.max(0, Math.min(1, subtitleOpacity * 0.7));
-        }
-    }
+    // updateHeroText removed — all 3D hero text eliminated per audit
 
     private updateBuildingAnimations(time: number, scrollProgress: number): void {
         // Properties rise from ground during scene 2 (0.2 - 0.5)

@@ -252,6 +252,69 @@ export const createLighting = (): THREE.Group => {
     return group;
 };
 
+/**
+ * Far Depth Grid — Hero spatial depth layer A
+ * Horizontal lines only, very subtle, for parallax depth illusion
+ * Position: z = -200, Opacity: 0.03, Color: desaturated gold
+ */
+export const createFarDepthGrid = (): THREE.Group => {
+    const group = new THREE.Group();
+
+    // Desaturated gold color
+    const lineColor = 0x8a7a52;
+
+    // Create horizontal lines only (no verticals per spec)
+    const lineCount = 20;
+    const spacing = 10;
+    const width = 400;
+
+    for (let i = -lineCount / 2; i <= lineCount / 2; i++) {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array([
+            -width / 2, i * spacing, 0,
+            width / 2, i * spacing, 0
+        ]);
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.LineBasicMaterial({
+            color: lineColor,
+            transparent: true,
+            opacity: 0.03,
+            depthWrite: false,
+        });
+
+        const line = new THREE.Line(geometry, material);
+        group.add(line);
+    }
+
+    // Position at far depth
+    group.position.z = -200;
+
+    return group;
+};
+
+/**
+ * Mid Fog Plane — Hero spatial depth layer B
+ * Uses fog shader with slow lateral drift
+ * Position: z = -50
+ */
+export const createMidFogPlane = (
+    materials: ReturnType<typeof createMaterials>
+): THREE.Mesh => {
+    const geometry = new THREE.PlaneGeometry(300, 100);
+    const mesh = new THREE.Mesh(geometry, materials.fog.clone());
+
+    // Lower opacity for subtle atmospheric presence
+    if (mesh.material instanceof THREE.ShaderMaterial) {
+        mesh.material.uniforms.uDensity.value = 0.15;
+    }
+
+    mesh.position.z = -50;
+    mesh.position.y = 10;
+
+    return mesh;
+};
+
 // Create hero text plane (3D text in space)
 export const createTextPlane = (
     text: string,
@@ -299,6 +362,55 @@ export const createTextPlane = (
     return mesh;
 };
 
+/**
+ * Volumetric Light Cone — Soft moonlight glow for property focus
+ * Radial gradient shader, subtle opacity, no sharp beams
+ */
+export const createVolumetricCone = (): THREE.Mesh => {
+    const geometry = new THREE.ConeGeometry(8, 25, 32, 1, true);
+
+    const material = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        uniforms: {
+            uOpacity: { value: 0 },
+            uColor: { value: new THREE.Color(0xc9a962) },
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            varying float vHeight;
+            
+            void main() {
+                vUv = uv;
+                vHeight = position.y / 25.0 + 0.5;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uOpacity;
+            uniform vec3 uColor;
+            varying vec2 vUv;
+            varying float vHeight;
+            
+            void main() {
+                vec2 center = vec2(0.5, 0.5);
+                float dist = distance(vUv, center) * 2.0;
+                float radialFade = 1.0 - smoothstep(0.0, 1.0, dist);
+                float heightFade = pow(vHeight, 0.5);
+                float alpha = radialFade * heightFade * uOpacity * 0.15;
+                gl_FragColor = vec4(uColor, alpha);
+            }
+        `,
+    });
+
+    const cone = new THREE.Mesh(geometry, material);
+    cone.rotation.x = Math.PI;
+    cone.visible = false;
+
+    return cone;
+};
+
 export default {
     createMaterials,
     createMonolith,
@@ -307,4 +419,7 @@ export default {
     createFogVolume,
     createLighting,
     createTextPlane,
+    createFarDepthGrid,
+    createMidFogPlane,
+    createVolumetricCone,
 };

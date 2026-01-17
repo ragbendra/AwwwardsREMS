@@ -15,10 +15,11 @@ export interface ScrollState {
 export type ScrollCallback = (state: ScrollState) => void;
 
 // Scene breakpoints as percentages of total scroll
+// Hero range widened to 0.00-0.25 for scroll transition robustness
 const SCENE_BREAKPOINTS = [
-    { start: 0, end: 0.05, index: 0 },     // Preload
-    { start: 0.05, end: 0.2, index: 1 },   // Hero
-    { start: 0.2, end: 0.5, index: 2 },    // Portfolio
+    { start: 0, end: 0.00, index: 0 },     // Preload (instant)
+    { start: 0.00, end: 0.25, index: 1 },  // Hero (widened)
+    { start: 0.25, end: 0.5, index: 2 },   // Portfolio
     { start: 0.5, end: 0.7, index: 3 },    // Focus
     { start: 0.7, end: 0.9, index: 4 },    // Analytics
     { start: 0.9, end: 1.0, index: 5 },    // God View

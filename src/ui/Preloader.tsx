@@ -1,74 +1,57 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { getAssetLoadingManager, AssetLoadingState } from '@/experience/AssetLoadingManager';
 
 interface PreloaderProps {
     onComplete?: () => void;
-    duration?: number;
 }
 
-// Narrative loading states that tell a story
-const loadingStates = [
-    { text: "Analyzing market signals", detail: "847 data points" },
-    { text: "Mapping architectural ecosystems", detail: "5 neighborhoods" },
-    { text: "Calibrating spatial intelligence", detail: "23 properties" },
-    { text: "Preparing your portfolio", detail: "Almost ready" },
-];
-
-const manifesto = "Where architecture becomes investment.";
-
-export default function Preloader({ onComplete, duration = 3500 }: PreloaderProps) {
+/**
+ * Preloader — Minimalist asset-driven loading bar
+ * No fake copy, no percentages, linear bar motion only.
+ * Completes when AssetLoadingManager reports isComplete.
+ */
+export default function Preloader({ onComplete }: PreloaderProps) {
     const [progress, setProgress] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
     const [isHidden, setIsHidden] = useState(false);
-    const [currentStateIndex, setCurrentStateIndex] = useState(0);
-    const [manifestoVisible, setManifestoVisible] = useState(false);
-
-    // Calculate which loading state to show based on progress
-    const currentState = useMemo(() => {
-        const index = Math.min(
-            Math.floor(progress * loadingStates.length),
-            loadingStates.length - 1
-        );
-        return loadingStates[index];
-    }, [progress]);
 
     useEffect(() => {
-        const startTime = Date.now();
-        const targetDuration = duration;
+        const manager = getAssetLoadingManager();
 
-        const updateProgress = () => {
-            const elapsed = Date.now() - startTime;
-            const newProgress = Math.min(elapsed / targetDuration, 1);
+        // Subscribe to progress
+        const unsubProgress = manager.onProgress((state: AssetLoadingState) => {
+            // Linear progress, no easing
+            setProgress(state.progress);
+        });
 
-            setProgress(newProgress);
+        // Subscribe to complete
+        const unsubComplete = manager.onComplete(() => {
+            setIsComplete(true);
+            // Fade out then notify
+            setTimeout(() => {
+                setIsHidden(true);
+                onComplete?.();
+            }, 800);
+        });
 
-            // Update state index for animations
-            const newIndex = Math.min(
-                Math.floor(newProgress * loadingStates.length),
-                loadingStates.length - 1
-            );
-            if (newIndex !== currentStateIndex) {
-                setCurrentStateIndex(newIndex);
+        // If no assets are being tracked, force complete after a brief delay
+        // This handles scenes that don't load external assets
+        const timeout = setTimeout(() => {
+            const state = manager.getState();
+            if (state.totalAssets === 0 && !state.isComplete) {
+                manager.forceComplete();
             }
+        }, 100);
 
-            if (newProgress < 1) {
-                requestAnimationFrame(updateProgress);
-            } else {
-                setManifestoVisible(true);
-                setTimeout(() => {
-                    setIsComplete(true);
-                    setTimeout(() => {
-                        setIsHidden(true);
-                        onComplete?.();
-                    }, 800);
-                }, 600);
-            }
+        return () => {
+            unsubProgress();
+            unsubComplete();
+            clearTimeout(timeout);
         };
-
-        requestAnimationFrame(updateProgress);
-    }, [duration, onComplete, currentStateIndex]);
+    }, [onComplete]);
 
     if (isHidden) return null;
 
@@ -109,84 +92,13 @@ export default function Preloader({ onComplete, duration = 3500 }: PreloaderProp
                     MERIDIAN
                 </motion.div>
 
-                {/* Narrative Loading State */}
-                <motion.div
-                    key={currentStateIndex}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    style={{
-                        marginBottom: 'var(--space-lg)',
-                        minHeight: '48px',
-                    }}
-                >
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-body)',
-                            fontSize: 'var(--text-sm)',
-                            color: 'var(--color-ivory)',
-                            letterSpacing: '0.02em',
-                            marginBottom: 'var(--space-xs)',
-                        }}
-                    >
-                        {currentState.text}
-                    </div>
-                    <div
-                        style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 'var(--text-xs)',
-                            color: 'var(--color-accent)',
-                            letterSpacing: '0.1em',
-                        }}
-                    >
-                        {currentState.detail}
-                    </div>
-                </motion.div>
-
-                {/* Progress bar */}
+                {/* Progress bar — linear motion only */}
                 <div className="preloader__progress" style={{ width: '200px', margin: '0 auto' }}>
                     <motion.div
                         className="preloader__bar"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress * 100}%` }}
-                        transition={{ duration: 0.1, ease: 'linear' }}
+                        style={{ width: `${progress * 100}%` }}
                     />
                 </div>
-
-                {/* Manifesto reveal */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{
-                        opacity: manifestoVisible ? 1 : 0,
-                        y: manifestoVisible ? 0 : 15
-                    }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                    style={{
-                        marginTop: 'var(--space-xl)',
-                        fontFamily: 'var(--font-body)',
-                        fontSize: 'var(--text-sm)',
-                        fontStyle: 'italic',
-                        color: 'var(--color-silver)',
-                        letterSpacing: '0.02em',
-                    }}
-                >
-                    {manifesto}
-                </motion.div>
-
-                {/* Percentage */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: isComplete ? 0 : 0.4 }}
-                    style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 'var(--text-xs)',
-                        color: 'var(--color-silver)',
-                        marginTop: 'var(--space-lg)',
-                    }}
-                >
-                    {Math.round(progress * 100)}%
-                </motion.div>
             </div>
         </motion.div>
     );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Preloader from '@/ui/Preloader';
 import MinimalOverlay from '@/ui/MinimalOverlay';
@@ -28,12 +28,20 @@ type PropertyData = {
     awards?: string[];
 };
 
+// Hero minimum lock duration (3 seconds)
+const HERO_MIN_LOCK_MS = 3000;
+
 export default function ExperienceProvider() {
     const [isLoading, setIsLoading] = useState(true);
     const [currentScene, setCurrentScene] = useState(0);
     const [scrollProgress, setScrollProgress] = useState(0);
     const [focusedProperty, setFocusedProperty] = useState<PropertyData | null>(null);
     const [reducedMotion, setReducedMotion] = useState(false);
+    const [scrollLocked, setScrollLocked] = useState(true);
+
+    const heroLockStartRef = useRef<number>(Date.now());
+    const heroLockTimerElapsedRef = useRef<boolean>(false);
+    const assetsCompleteRef = useRef<boolean>(false);
 
     // Check for reduced motion preference
     useEffect(() => {
@@ -54,8 +62,42 @@ export default function ExperienceProvider() {
         };
     }, []);
 
+    // 3-second time-based scroll lock
+    useEffect(() => {
+        heroLockStartRef.current = Date.now();
+
+        const timer = setTimeout(() => {
+            heroLockTimerElapsedRef.current = true;
+            // Unlock only if assets are also complete
+            if (assetsCompleteRef.current) {
+                setScrollLocked(false);
+                document.body.style.overflow = '';
+            }
+        }, HERO_MIN_LOCK_MS);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Apply scroll lock to body
+    useEffect(() => {
+        if (scrollLocked) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [scrollLocked]);
+
     const handlePreloaderComplete = useCallback(() => {
         setIsLoading(false);
+        assetsCompleteRef.current = true;
+
+        // Unlock only if hero lock timer has also elapsed
+        if (heroLockTimerElapsedRef.current) {
+            setScrollLocked(false);
+        }
     }, []);
 
     const handleSceneChange = useCallback((sceneIndex: number, progress: number) => {
@@ -103,7 +145,6 @@ export default function ExperienceProvider() {
             {isLoading && (
                 <Preloader
                     onComplete={handlePreloaderComplete}
-                    duration={reducedMotion ? 500 : 3500}
                 />
             )}
 

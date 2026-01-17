@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DepthLayer from './DepthLayer';
 import ProgressBar from './ProgressBar';
-import { GalleryImageData, RESPONSIVE_LAYERS } from './galleryData';
+import { GalleryImageData, RESPONSIVE_LAYERS, LAYER_CONFIG } from './galleryData';
+import { useTransition } from '@/context/TransitionContext';
 
 interface LayeredGalleryProps {
     scrollProgress: number; // Global scroll progress (0-1)
@@ -123,6 +124,9 @@ export default function LayeredGallery({
     // Mouse position for cursor parallax effect (normalized -1 to 1)
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+    // Transition context for scene navigation
+    const { isTransitioning, transitionPhase, origin } = useTransition();
+
     // Gallery-specific progress (maps global scroll to gallery section)
     // Scene 4 is roughly 70-90% of total scroll
     const galleryStart = 0.7;
@@ -196,8 +200,26 @@ export default function LayeredGallery({
     // Get layers based on device type
     const activeLayers = RESPONSIVE_LAYERS[deviceType];
 
-    // Entry/exit opacity
-    const containerOpacity = isActive ? 1 : 0;
+    // Entry/exit opacity - also fade during transition
+    const containerOpacity = isActive && !isTransitioning ? 1 : 0;
+
+    // Calculate depth-aware dissolve for each layer during transition
+    const getLayerDissolveStyle = (layer: number) => {
+        if (!isTransitioning || transitionPhase === 'idle' || transitionPhase === 'complete') {
+            return {};
+        }
+
+        // Foreground layers (4-5) fade faster, background layers (1-2) fade slower
+        const layerConfig = LAYER_CONFIG[layer as 1 | 2 | 3 | 4 | 5];
+        const baseDuration = 0.3;
+        const layerDelay = (5 - layer) * 0.05; // Foreground first
+
+        return {
+            opacity: 0,
+            filter: `blur(${layerConfig.blur + 4}px)`,
+            transition: `opacity ${baseDuration}s ease-out ${layerDelay}s, filter ${baseDuration}s ease-out ${layerDelay}s`,
+        };
+    };
 
     return (
         <>

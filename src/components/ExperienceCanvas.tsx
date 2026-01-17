@@ -9,6 +9,7 @@ import Lenis from 'lenis';
 import { ExperienceScene, PropertyMesh } from '@/scenes/ExperienceScene';
 import { CameraController } from '@/experience/CameraController';
 import { Renderer } from '@/experience/Renderer';
+import { getAssetLoadingManager } from '@/experience/AssetLoadingManager';
 import portfolioData from '@/data/mockPortfolio.json';
 
 // Register GSAP plugins
@@ -72,6 +73,14 @@ export default function ExperienceCanvas({
             raf: null,
         };
 
+        // Register renderer with AssetLoadingManager for shader warm-up
+        const assetManager = getAssetLoadingManager();
+        assetManager.registerRenderer(
+            renderer.renderer,
+            experienceScene.scene,
+            cameraController.camera
+        );
+
         // Set up scroll-driven camera
         let currentProgress = 0;
         let targetProgress = 0;
@@ -94,8 +103,9 @@ export default function ExperienceCanvas({
             // Update Lenis
             exp.lenis?.raf(time);
 
-            // Smooth scroll progress interpolation
-            currentProgress += (targetProgress - currentProgress) * 0.05;
+            // Smooth scroll progress interpolation (scrub: 1.2 factor)
+            const scrubFactor = 1 / 1.2;
+            currentProgress += (targetProgress - currentProgress) * 0.05 * scrubFactor;
 
             // Update camera based on scroll
             exp.camera.updateFromScroll(currentProgress);

@@ -51,7 +51,11 @@ export class CameraController {
         this.target = mergedConfig.initialLookAt.clone();
         this.camera.lookAt(this.target);
 
-        // Define the camera path through all scenes
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // CAMERA SPLINE PATH — DO NOT MODIFY
+        // These coordinates define the cinematic journey through all scenes.
+        // Any changes will break scroll-to-scene mapping and visual narrative.
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         this.path = new THREE.CatmullRomCurve3([
             new THREE.Vector3(0, 2, 10),      // Scene 0 - Preload
             new THREE.Vector3(0, 3, 5),       // Scene 1 - Hero start
@@ -90,8 +94,9 @@ export class CameraController {
         const pathPosition = this.path.getPointAt(this.progress);
         const lookAtPosition = this.lookAtPath.getPointAt(this.progress);
 
-        // Add subtle drift for organic feel
-        this.updateDrift();
+        // Add subtle drift for organic feel (disabled during hero)
+        const currentScene = this.getCurrentScene();
+        this.updateDrift(currentScene);
 
         // Apply position
         this.camera.position.copy(pathPosition).add(this.driftOffset);
@@ -99,7 +104,13 @@ export class CameraController {
         this.camera.lookAt(this.target);
     }
 
-    private updateDrift(): void {
+    private updateDrift(currentScene: number): void {
+        // Disable drift during Scene 1 (hero) for visual stability
+        if (currentScene === 1) {
+            this.driftOffset.set(0, 0, 0);
+            return;
+        }
+
         const time = Date.now() * 0.0001;
 
         // Subtle breathing motion
@@ -160,12 +171,12 @@ export class CameraController {
 
     getCurrentScene(): number {
         // Map progress to scene index (0-5)
-        if (this.progress < 0.05) return 0;
-        if (this.progress < 0.2) return 1;
-        if (this.progress < 0.5) return 2;
-        if (this.progress < 0.7) return 3;
-        if (this.progress < 0.9) return 4;
-        return 5;
+        // Hero range widened to 0.00-0.25 for scroll transition robustness
+        if (this.progress < 0.25) return 1;  // Hero (widened, no preload scene)
+        if (this.progress < 0.5) return 2;   // Portfolio
+        if (this.progress < 0.7) return 3;   // Focus
+        if (this.progress < 0.9) return 4;   // Analytics
+        return 5;                             // God View
     }
 }
 

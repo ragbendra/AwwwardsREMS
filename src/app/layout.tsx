@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
+import { TransitionProvider } from "@/context/TransitionContext";
+import TransitionOverlay from "@/components/TransitionOverlay";
+import PropertyDetailOverlay from "@/components/PropertyDetailOverlay";
 
 export const metadata: Metadata = {
   title: "Meridian Capital | Real Estate Portfolio",
@@ -45,8 +48,13 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {children}
+        <TransitionProvider>
+          {children}
+          <TransitionOverlay />
+          <PropertyDetailOverlay />
+        </TransitionProvider>
       </body>
     </html>
   );
 }
+

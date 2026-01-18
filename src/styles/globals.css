@@ -1557,3 +1557,132 @@ video {
 .scroll-indicator {
     isolation: isolate;
 }
+
+/* ================================================
+   CUSTOM CURSOR STYLES
+   ================================================ */
+/* Hide default cursor when custom cursor is active */
+body.custom-cursor-active {
+    cursor: none;
+}
+
+body.custom-cursor-active *:not(input):not(textarea):not(select):not(button) {
+    cursor: none !important;
+}
+
+/* Restore cursor for form elements */
+body.custom-cursor-active input,
+body.custom-cursor-active textarea,
+body.custom-cursor-active select {
+    cursor: auto !important;
+}
+
+/* ================================================
+   REDUCED MOTION SUPPORT
+   ================================================ */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .scroll-indicator__dot {
+        animation: none;
+    }
+
+    .scene-transition-wipe,
+    .scroll-motion-blur {
+        display: none !important;
+    }
+
+    .magnetic-cursor,
+    .magnetic-cursor-dot {
+        display: none !important;
+    }
+}
+
+/* ================================================
+   iOS VIEWPORT FIX
+   ================================================ */
+:root {
+    --vh: 1vh;
+}
+
+.hero-section,
+.preloader,
+.fixed-fill,
+.experience-canvas {
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+    min-height: -webkit-fill-available;
+}
+
+/* Safari-specific fix */
+@supports (-webkit-touch-callout: none) {
+
+    .hero-section,
+    .preloader,
+    .fixed-fill {
+        height: -webkit-fill-available;
+    }
+}
+
+/* ================================================
+   ACCESSIBILITY - FOCUS INDICATORS
+   ================================================ */
+/* Visible focus indicators */
+:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Remove default focus ring, keep for keyboard only */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Skip to content link */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: var(--space-sm) var(--space-lg);
+    background: var(--color-accent);
+    color: var(--color-void);
+    z-index: 10000;
+    transition: top 0.3s;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+}
+
+.skip-link:focus {
+    top: var(--space-sm);
+}
+
+/* Property cards should be focusable */
+.property-card {
+    outline: none;
+}
+
+.property-card:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+/* Visually hidden but accessible */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

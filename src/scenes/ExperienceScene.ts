@@ -227,8 +227,8 @@ export class ExperienceScene {
      * - Smooth 1.5s crossfade transitions
      */
     private updatePropertyFocus(time: number, scrollProgress: number): void {
-        // Only active during portfolio section (0.25 - 0.5)
-        if (scrollProgress < 0.25 || scrollProgress > 0.5) {
+        // Only active during portfolio section (0.15 - 0.50)
+        if (scrollProgress < 0.15 || scrollProgress > 0.50) {
             if (this.volumetricCone) {
                 this.volumetricCone.visible = false;
                 if (this.volumetricCone.material instanceof THREE.ShaderMaterial) {
@@ -239,8 +239,8 @@ export class ExperienceScene {
             return;
         }
 
-        // Map scroll 0.25-0.5 to property indices
-        const portfolioProgress = (scrollProgress - 0.25) / 0.25;
+        // Map scroll 0.15-0.50 to property indices
+        const portfolioProgress = (scrollProgress - 0.15) / 0.35;
         const propertyCount = this.propertyMeshes.size;
         const targetIndex = Math.min(
             Math.floor(portfolioProgress * propertyCount),
@@ -370,6 +370,14 @@ export class ExperienceScene {
 
         const positions = this.dataParticles.geometry.attributes.position.array as Float32Array;
         const velocities = this.dataParticles.geometry.attributes.velocity?.array as Float32Array;
+        const colors = this.dataParticles.geometry.attributes.color?.array as Float32Array;
+
+        // Base and highlight colors for proximity effect
+        const baseColor = { r: 0.77, g: 0.63, b: 0.32 }; // Gold
+        const highlightColor = { r: 1.0, g: 0.85, b: 0.5 }; // Bright gold
+
+        // Get focused property position for proximity calculations
+        const focusedPos = this.targetFocusProperty?.position;
 
         if (velocities) {
             for (let i = 0; i < positions.length; i += 3) {
@@ -382,9 +390,30 @@ export class ExperienceScene {
                 if (positions[i + 1] > 50) {
                     positions[i + 1] = -30;
                 }
+
+                // Proximity-based color shift (if color attribute exists and there's a focus)
+                if (colors && focusedPos) {
+                    // Calculate distance from particle to focused property
+                    const dx = positions[i] - focusedPos.x;
+                    const dy = positions[i + 1] - focusedPos.y;
+                    const dz = positions[i + 2] - focusedPos.z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                    // Proximity factor: 1.0 at center, 0.0 at 30+ units
+                    const proximityRadius = 30;
+                    const proximity = Math.max(0, 1 - distance / proximityRadius);
+
+                    // Lerp color based on proximity
+                    colors[i] = baseColor.r + (highlightColor.r - baseColor.r) * proximity;
+                    colors[i + 1] = baseColor.g + (highlightColor.g - baseColor.g) * proximity;
+                    colors[i + 2] = baseColor.b + (highlightColor.b - baseColor.b) * proximity;
+                }
             }
 
             this.dataParticles.geometry.attributes.position.needsUpdate = true;
+            if (colors) {
+                this.dataParticles.geometry.attributes.color.needsUpdate = true;
+            }
         }
 
         // Enhanced rotation based on scroll

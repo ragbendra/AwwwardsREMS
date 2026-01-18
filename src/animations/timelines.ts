@@ -1,13 +1,10 @@
 'use client';
 
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import * as THREE from 'three';
 
-// Register GSAP plugins
-if (typeof window !== 'undefined') {
-    gsap.registerPlugin(ScrollTrigger);
-}
+// WeakMap to track active shader tweens - prevents memory leaks
+const activeShaderTweens = new WeakMap<THREE.ShaderMaterial, Map<string, gsap.core.Tween>>();
 
 // Motion constants - One easing per category
 export const MOTION = {
@@ -88,18 +85,18 @@ export function createHeroRevealTimeline(
         paused: true,
     });
 
-    // Title reveal from depth
+    // Title reveal from depth - using scale instead of blur for GPU performance
     if (elements.title) {
         tl.fromTo(elements.title,
             {
                 opacity: 0,
                 y: 60,
-                filter: 'blur(10px)',
+                scale: 0.97,
             },
             {
                 opacity: 1,
                 y: 0,
-                filter: 'blur(0px)',
+                scale: 1,
                 duration: 1.5,
                 ease: MOTION.reveal.ease,
             }
@@ -194,38 +191,10 @@ export function createPropertyMetaTimeline(
     return tl;
 }
 
-// Scroll-triggered camera animation
-export function createScrollCameraAnimation(
-    camera: THREE.PerspectiveCamera,
-    path: THREE.CatmullRomCurve3,
-    lookAtPath: THREE.CatmullRomCurve3
-): void {
-    ScrollTrigger.create({
-        trigger: 'body',
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1.5,
-        onUpdate: (self) => {
-            const progress = self.progress;
-
-            // Get position on path
-            const position = path.getPointAt(progress);
-            const lookAt = lookAtPath.getPointAt(progress);
-
-            // Smooth camera update
-            gsap.to(camera.position, {
-                x: position.x,
-                y: position.y,
-                z: position.z,
-                duration: 0.3,
-                ease: 'none',
-                onUpdate: () => {
-                    camera.lookAt(lookAt);
-                },
-            });
-        },
-    });
-}
+// REMOVED: createScrollCameraAnimation
+// This function was causing conflicts with Lenis RAF loop.
+// Camera updates are now handled exclusively by CameraController.updateFromScroll()
+// to prevent double animation and frame drops.
 
 // Scene progress indicators
 export function createSceneProgressAnimation(
@@ -290,13 +259,19 @@ export function createGodViewAnimation(
     return tl;
 }
 
-// Shader uniform animation
+// Shader uniform animation with tween tracking to prevent memory leaks
 export function animateShaderUniform(
     material: THREE.ShaderMaterial,
     uniformName: string,
     targetValue: number,
     duration: number = MOTION.shader.duration
 ): gsap.core.Tween {
+    // Type check for shader material
+    if (!(material instanceof THREE.ShaderMaterial)) {
+        console.warn('animateShaderUniform requires a ShaderMaterial');
+        return gsap.to({}, { duration: 0 });
+    }
+
     const uniforms = material.uniforms;
 
     if (!uniforms[uniformName]) {
@@ -304,11 +279,32 @@ export function animateShaderUniform(
         return gsap.to({}, { duration: 0 });
     }
 
-    return gsap.to(uniforms[uniformName], {
+    // Get or create tween map for this material
+    let tweenMap = activeShaderTweens.get(material);
+    if (!tweenMap) {
+        tweenMap = new Map();
+        activeShaderTweens.set(material, tweenMap);
+    }
+
+    // Kill existing tween for this uniform if present
+    const existingTween = tweenMap.get(uniformName);
+    if (existingTween) {
+        existingTween.kill();
+    }
+
+    // Create new tween and store reference
+    const tween = gsap.to(uniforms[uniformName], {
         value: targetValue,
         duration,
         ease: MOTION.shader.ease,
+        onComplete: () => {
+            // Remove from map when complete
+            tweenMap?.delete(uniformName);
+        },
     });
+
+    tweenMap.set(uniformName, tween);
+    return tween;
 }
 
 // Building entrance animation
@@ -377,7 +373,7 @@ const timelines = {
     createPreloaderTimeline,
     createHeroRevealTimeline,
     createPropertyMetaTimeline,
-    createScrollCameraAnimation,
+    // createScrollCameraAnimation removed - conflicts with Lenis
     createSceneProgressAnimation,
     createFloatingTextAnimation,
     createGodViewAnimation,

@@ -8,6 +8,8 @@ import LayeredGallery from '@/components/LayeredGallery';
 import Footer from './Footer';
 import AudioController from './AudioController';
 import { CompareView } from '@/components/CompareMode';
+import MagneticCursor from '@/components/MagneticCursor';
+import SceneTransitionWipe from '@/components/SceneTransitionWipe';
 import portfolioData from '@/data/mockPortfolio.json';
 
 interface PropertyData {
@@ -31,8 +33,6 @@ interface MinimalOverlayProps {
     propertyData: PropertyData | null;
 }
 
-// Hero headlines with staggered reveal
-// Stagger: 0.3s intervals, 0.5s animation duration, ~1.6s total settle
 const heroHeadlines = [
     { text: "MERIDIAN CAPITAL", delay: 0 },
     { text: `$${(portfolioData.portfolio.totalValue / 1000000000).toFixed(1)}B IN ARCHITECTURAL INTELLIGENCE`, delay: 0.3 },
@@ -53,7 +53,6 @@ export default function MinimalOverlay({
     const [isCompareMode, setIsCompareMode] = useState(false);
     const [heroAnimationComplete, setHeroAnimationComplete] = useState(false);
 
-    // Check for reduced motion preference
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
         const handleChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
@@ -69,7 +68,6 @@ export default function MinimalOverlay({
         };
     }, []);
 
-    // Update clock
     useEffect(() => {
         const updateTime = () => {
             const now = new Date();
@@ -88,7 +86,6 @@ export default function MinimalOverlay({
         return () => clearInterval(interval);
     }, []);
 
-    // Scroll-triggered nav visibility
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
@@ -108,7 +105,6 @@ export default function MinimalOverlay({
         return () => window.removeEventListener('scroll', handleScroll);
     }, [lastScrollY]);
 
-    // Cycle through hero headlines in scene 1 (time-based entry)
     useEffect(() => {
         if (currentScene !== 1) {
             setHeroIndex(0);
@@ -119,7 +115,6 @@ export default function MinimalOverlay({
         const intervals = heroHeadlines.map((_, index) => {
             return setTimeout(() => {
                 setHeroIndex(index);
-                // Mark animation complete after last headline settles (~0.5s after last delay)
                 if (index === heroHeadlines.length - 1) {
                     setTimeout(() => setHeroAnimationComplete(true), 500);
                 }
@@ -133,47 +128,53 @@ export default function MinimalOverlay({
         switch (currentScene) {
             case 1: return 'MERIDIAN CAPITAL';
             case 2: return 'PORTFOLIO OVERVIEW';
-            case 3: return 'PROPERTY FOCUS';
+            case 3: return 'THE COLLECTION';
             case 4: return 'ANALYTICS';
             case 5: return 'OVERVIEW';
             default: return 'MERIDIAN CAPITAL';
         }
     };
 
-    // Dynamic CTA based on scroll depth
     const getCTAConfig = useMemo(() => {
-        if (scrollProgress < 0.2) {
+        if (scrollProgress < 0.15) {
             return { text: "Explore the Portfolio", icon: "→" };
-        } else if (scrollProgress < 0.7) {
+        } else if (scrollProgress < 0.50) {
             return { text: "Save to Shortlist", icon: "♡" };
-        } else if (scrollProgress < 0.9) {
+        } else if (scrollProgress < 0.75) {
+            return { text: "View Collection", icon: "🖼️" };
+        } else if (scrollProgress < 0.90) {
             return { text: "Request Details", icon: "📋" };
         }
         return { text: "Schedule Presentation", icon: "📅" };
     }, [scrollProgress]);
 
-    // Hero visibility: visible on mount, exit delayed to 0.18-0.20
-    // Exit only after animation completes OR scroll reaches threshold
-    const showHero = scrollProgress < 0.20 && (heroAnimationComplete ? scrollProgress < 0.18 : true);
+    // Scene visibility logic with proper exit transitions
+    const showHero = currentScene === 1 && scrollProgress < 0.13;
+    const showPortfolioIntro = currentScene === 2 && scrollProgress >= 0.15 && scrollProgress < 0.22 && !propertyData;
+    const showPropertyCard = (currentScene === 2) && propertyData;
+    const showGallery = currentScene === 3;
+    const showFooter = currentScene === 5 && scrollProgress > 0.90;
 
     return (
         <>
-            {/* Navigation */}
+            <MagneticCursor />
+            <SceneTransitionWipe />
+
             <Navbar
                 isVisible={isNavVisible}
                 currentTime={currentTime}
                 scrollProgress={scrollProgress}
             />
 
-            {/* Hero Headlines - Scene 1 */}
+            {/* Hero Headlines - Scene 1 (0.00-0.15) */}
             <AnimatePresence>
                 {showHero && (
                     <motion.div
                         className="hero-headlines"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.8 }}
+                        exit={{ opacity: 0, y: -30 }}
+                        transition={{ duration: 0.6 }}
                         style={{
                             position: 'fixed',
                             top: '50%',
@@ -189,6 +190,7 @@ export default function MinimalOverlay({
                                 key={index}
                                 initial={{ opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
                                 transition={{
                                     duration: 0.5,
                                     delay: index * 0.1,
@@ -212,14 +214,14 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Portfolio Overview Intro - Scene 2 (exits before property cards appear) */}
+            {/* Portfolio Overview Intro - Scene 2 (0.15-0.22) */}
             <AnimatePresence>
-                {scrollProgress > 0.18 && scrollProgress < 0.24 && !propertyData && (
+                {showPortfolioIntro && (
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                         style={{
                             position: 'fixed',
                             top: '30%',
@@ -262,7 +264,6 @@ export default function MinimalOverlay({
                 animate={{ opacity: 0.6 }}
                 transition={{ duration: 1, delay: 0.5 }}
             >
-                {/* Scene dots: 1-5 (hero, portfolio, focus, analytics, overview) */}
                 {[1, 2, 3, 4, 5].map((scene, index) => (
                     <div key={scene}>
                         <div
@@ -274,7 +275,7 @@ export default function MinimalOverlay({
                 ))}
             </motion.div>
 
-            {/* Scene Label — Opacity-only crossfade */}
+            {/* Scene Label */}
             <AnimatePresence mode="wait">
                 <motion.div
                     key={getSceneLabel()}
@@ -288,16 +289,16 @@ export default function MinimalOverlay({
                 </motion.div>
             </AnimatePresence>
 
-            {/* Property Meta Panel */}
+            {/* Property Meta Panel - Scene 2 only */}
             <AnimatePresence mode="wait">
-                {propertyData && (
+                {showPropertyCard && (
                     <PropertyCard property={propertyData} />
                 )}
             </AnimatePresence>
 
-            {/* Scroll Indicator — Visible on initial paint, fades at 18% */}
+            {/* Scroll Indicator - Hero only */}
             <AnimatePresence>
-                {scrollProgress < 0.18 && (
+                {scrollProgress < 0.12 && (
                     <motion.div
                         className="scroll-indicator"
                         initial={{ opacity: 0 }}
@@ -313,9 +314,9 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Floating CTA - Context Aware */}
+            {/* Floating CTA - Portfolio to Analytics */}
             <AnimatePresence>
-                {scrollProgress > 0.15 && scrollProgress < 0.85 && (
+                {scrollProgress > 0.15 && scrollProgress < 0.90 && !showGallery && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -353,19 +354,20 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Immersive Layered Gallery - Scene 4 */}
+            {/* Layered Gallery - Scene 3 (0.50-0.75) */}
             <LayeredGallery
                 scrollProgress={scrollProgress}
-                isActive={currentScene >= 4 && scrollProgress < 0.9}
+                isActive={showGallery}
             />
 
-            {/* Footer - Shows at end */}
+            {/* Footer - Scene 5 (0.90+) */}
             <AnimatePresence>
-                {currentScene >= 5 && scrollProgress > 0.85 && (
+                {showFooter && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
                         id="footer"
                     >
                         <Footer />
@@ -373,12 +375,11 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Audio Controller */}
             <AudioController scrollProgress={scrollProgress} currentScene={currentScene} />
 
-            {/* Compare Button - Shows when property is focused */}
+            {/* Compare Button - Portfolio scene only */}
             <AnimatePresence>
-                {propertyData && currentScene >= 2 && currentScene <= 3 && (
+                {propertyData && currentScene === 2 && (
                     <motion.button
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -410,7 +411,6 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Comparative Reality - Signature Feature */}
             <AnimatePresence>
                 {isCompareMode && (
                     <CompareView
@@ -421,10 +421,7 @@ export default function MinimalOverlay({
                 )}
             </AnimatePresence>
 
-            {/* Grain Overlay */}
             <div className="grain-overlay" aria-hidden="true" />
-
-            {/* Vignette Overlay */}
             <div className="vignette-overlay" aria-hidden="true" />
         </>
     );

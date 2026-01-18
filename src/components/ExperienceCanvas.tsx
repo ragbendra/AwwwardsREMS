@@ -1,23 +1,14 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Lenis from 'lenis';
-
 import { ExperienceScene, PropertyMesh } from '@/scenes/ExperienceScene';
 import { CameraController } from '@/experience/CameraController';
 import { Renderer } from '@/experience/Renderer';
 import { getAssetLoadingManager } from '@/experience/AssetLoadingManager';
+import { getScrollManager } from '@/experience/ScrollManager';
 import portfolioData from '@/data/mockPortfolio.json';
 
-// Register GSAP plugins
-if (typeof window !== 'undefined') {
-    gsap.registerPlugin(ScrollTrigger);
-}
-
-// Property data type from mock data
 type PropertyDataType = typeof portfolioData.properties[0];
 
 interface ExperienceCanvasProps {
@@ -35,13 +26,10 @@ export default function ExperienceCanvas({
         scene: ExperienceScene;
         camera: CameraController;
         renderer: Renderer;
-        lenis: Lenis | null;
         raf: number | null;
     } | null>(null);
-
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Initialize Three.js experience
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current) return;
 
@@ -54,26 +42,18 @@ export default function ExperienceCanvas({
             cameraController.camera
         );
 
-        // Initialize Lenis for smooth scrolling
-        const lenis = new Lenis({
-            duration: 1.8,
-            easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            orientation: 'vertical',
-            gestureOrientation: 'vertical',
-            smoothWheel: true,
-            wheelMultiplier: 0.8,
-        });
+        // Get scroll manager singleton
+        const scrollManager = getScrollManager();
 
         // Store references
         experienceRef.current = {
             scene: experienceScene,
             camera: cameraController,
             renderer: renderer,
-            lenis: lenis,
             raf: null,
         };
 
-        // Register renderer with AssetLoadingManager for shader warm-up
+        // Register renderer with AssetLoadingManager
         const assetManager = getAssetLoadingManager();
         assetManager.registerRenderer(
             renderer.renderer,
@@ -81,58 +61,44 @@ export default function ExperienceCanvas({
             cameraController.camera
         );
 
-        // Set up scroll-driven camera
-        let currentProgress = 0;
-        let targetProgress = 0;
+        // Track state
         let currentScene = 0;
         let lastFocusedProperty: PropertyMesh | null = null;
 
-        // Handle scroll
-        const handleScroll = () => {
-            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-            targetProgress = scrollHeight > 0 ? window.scrollY / scrollHeight : 0;
-        };
+        // Subscribe to scroll manager
+        const unsubscribe = scrollManager.subscribe((state) => {
+            // Update camera from scroll state
+            cameraController.updateFromScroll(state.progress);
 
-        window.addEventListener('scroll', handleScroll, { passive: true });
-
-        // Animation loop
-        const animate = (time: number) => {
-            const exp = experienceRef.current;
-            if (!exp) return;
-
-            // Update Lenis
-            exp.lenis?.raf(time);
-
-            // Smooth scroll progress interpolation (scrub: 1.2 factor)
-            const scrubFactor = 1 / 1.2;
-            currentProgress += (targetProgress - currentProgress) * 0.05 * scrubFactor;
-
-            // Update camera based on scroll
-            exp.camera.updateFromScroll(currentProgress);
-
-            // Get current scene
-            const newScene = exp.camera.getCurrentScene();
-            if (newScene !== currentScene) {
-                currentScene = newScene;
-                onSceneChange?.(currentScene, currentProgress);
+            // Notify scene changes
+            if (state.sceneIndex !== currentScene) {
+                currentScene = state.sceneIndex;
+                onSceneChange?.(currentScene, state.progress);
             }
 
-            // Check for property focus (Scene 2-3)
-            if (currentScene >= 2 && currentScene <= 3) {
-                const cameraZ = exp.camera.camera.position.z;
-                const focusedProperty = exp.scene.getPropertyAtDistance(cameraZ, 12);
+            // Check for property focus (Scene 2: Portfolio)
+            if (currentScene === 2) {
+                const cameraZ = cameraController.camera.position.z;
+                const focusedProperty = experienceScene.getPropertyAtDistance(cameraZ, 12);
 
                 if (focusedProperty !== lastFocusedProperty) {
                     lastFocusedProperty = focusedProperty;
                     onPropertyFocus?.(focusedProperty?.userData.propertyData || null);
                 }
             } else if (lastFocusedProperty) {
+                // Clear property focus when leaving Portfolio scene
                 lastFocusedProperty = null;
                 onPropertyFocus?.(null);
             }
+        });
+
+        // Animation loop (render only, no scroll handling)
+        const animate = (time: number) => {
+            const exp = experienceRef.current;
+            if (!exp) return;
 
             // Update scene
-            exp.scene.update(time * 0.001, currentProgress);
+            exp.scene.update(time * 0.001, exp.camera.progress);
 
             // Render
             exp.renderer.render();
@@ -144,7 +110,7 @@ export default function ExperienceCanvas({
         // Start animation
         experienceRef.current.raf = requestAnimationFrame(animate);
 
-        // Defer loaded state to avoid sync setState in effect error
+        // Set loaded state
         requestAnimationFrame(() => {
             setIsLoaded(true);
         });
@@ -168,11 +134,10 @@ export default function ExperienceCanvas({
             const exp = experienceRef.current;
             if (exp) {
                 if (exp.raf) cancelAnimationFrame(exp.raf);
-                exp.lenis?.destroy();
                 exp.scene.dispose();
                 exp.renderer.dispose();
             }
-            window.removeEventListener('scroll', handleScroll);
+            unsubscribe();
             window.removeEventListener('resize', handleResize);
         };
     }, [onSceneChange, onPropertyFocus]);

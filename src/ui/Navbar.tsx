@@ -50,12 +50,12 @@ export default function Navbar({ isVisible, currentTime, scrollProgress }: Navba
     };
 
     const scrollToSection = (id: string) => {
-        // Calculate target scroll position based on section
+        // Calculate target scroll position based on section - aligned to SCENE_CONFIG
         const sectionMap: Record<string, number> = {
-            portfolio: 0.1,
-            properties: 0.3,
-            analytics: 0.7,
-            contact: 0.95,
+            portfolio: 0.15,    // Scene 2: Portfolio start
+            properties: 0.50,   // Scene 3: Gallery start
+            analytics: 0.75,    // Scene 4: Analytics start
+            contact: 0.92,      // Scene 5: GodView (contact)
         };
 
         const targetProgress = sectionMap[id] || 0;

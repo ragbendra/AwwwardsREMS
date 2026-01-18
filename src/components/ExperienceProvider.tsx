@@ -4,15 +4,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Preloader from '@/ui/Preloader';
 import MinimalOverlay from '@/ui/MinimalOverlay';
+import { useScrollState, getScrollManager } from '@/experience/ScrollManager';
 import portfolioData from '@/data/mockPortfolio.json';
 
-// Dynamic import for ExperienceCanvas to avoid SSR issues with Three.js
 const ExperienceCanvas = dynamic(
     () => import('@/components/ExperienceCanvas'),
     { ssr: false }
 );
 
-// Extended property data type to support new fields
 type PropertyData = {
     id?: string;
     name: string;
@@ -28,13 +27,10 @@ type PropertyData = {
     awards?: string[];
 };
 
-// Hero minimum lock duration (3 seconds)
 const HERO_MIN_LOCK_MS = 3000;
 
 export default function ExperienceProvider() {
     const [isLoading, setIsLoading] = useState(true);
-    const [currentScene, setCurrentScene] = useState(0);
-    const [scrollProgress, setScrollProgress] = useState(0);
     const [focusedProperty, setFocusedProperty] = useState<PropertyData | null>(null);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [scrollLocked, setScrollLocked] = useState(true);
@@ -43,12 +39,14 @@ export default function ExperienceProvider() {
     const heroLockTimerElapsedRef = useRef<boolean>(false);
     const assetsCompleteRef = useRef<boolean>(false);
 
+    // Get scroll state from ScrollManager
+    const scrollState = useScrollState();
+
     // Check for reduced motion preference
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
         const updateMotion = (matches: boolean) => setReducedMotion(matches);
 
-        // Defer initial setup to avoid sync setState in effect error
         const timeoutId = setTimeout(() => {
             updateMotion(mediaQuery.matches);
         }, 0);
@@ -68,25 +66,26 @@ export default function ExperienceProvider() {
 
         const timer = setTimeout(() => {
             heroLockTimerElapsedRef.current = true;
-            // Unlock only if assets are also complete
             if (assetsCompleteRef.current) {
                 setScrollLocked(false);
-                document.body.style.overflow = '';
             }
         }, HERO_MIN_LOCK_MS);
 
         return () => clearTimeout(timer);
     }, []);
 
-    // Apply scroll lock to body
+    // Apply scroll lock using ScrollManager
     useEffect(() => {
+        const scrollManager = getScrollManager();
+
         if (scrollLocked) {
-            document.body.style.overflow = 'hidden';
+            scrollManager.stop();
         } else {
-            document.body.style.overflow = '';
+            scrollManager.start();
         }
+
         return () => {
-            document.body.style.overflow = '';
+            scrollManager.start();
         };
     }, [scrollLocked]);
 
@@ -94,18 +93,11 @@ export default function ExperienceProvider() {
         setIsLoading(false);
         assetsCompleteRef.current = true;
 
-        // Unlock only if hero lock timer has also elapsed
         if (heroLockTimerElapsedRef.current) {
             setScrollLocked(false);
         }
     }, []);
 
-    const handleSceneChange = useCallback((sceneIndex: number, progress: number) => {
-        setCurrentScene(sceneIndex);
-        setScrollProgress(progress);
-    }, []);
-
-    // Enhanced property focus handler to include new data fields
     const handlePropertyFocus = useCallback((property: typeof portfolioData.properties[0] | null) => {
         if (property) {
             setFocusedProperty({
@@ -127,36 +119,19 @@ export default function ExperienceProvider() {
         }
     }, []);
 
-    // Update scroll progress from scroll events
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const progress = scrollHeight > 0 ? window.scrollY / scrollHeight : 0;
-            setScrollProgress(progress);
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     return (
         <>
-            {/* Preloader */}
             {isLoading && (
-                <Preloader
-                    onComplete={handlePreloaderComplete}
-                />
+                <Preloader onComplete={handlePreloaderComplete} />
             )}
 
-            {/* 3D Experience Canvas */}
             {!reducedMotion && (
                 <ExperienceCanvas
-                    onSceneChange={handleSceneChange}
+                    onSceneChange={() => {}}
                     onPropertyFocus={handlePropertyFocus}
                 />
             )}
 
-            {/* Fallback for reduced motion */}
             {reducedMotion && (
                 <div
                     style={{
@@ -204,11 +179,10 @@ export default function ExperienceProvider() {
                 </div>
             )}
 
-            {/* UI Overlay */}
             {!isLoading && !reducedMotion && (
                 <MinimalOverlay
-                    currentScene={currentScene}
-                    scrollProgress={scrollProgress}
+                    currentScene={scrollState.sceneIndex}
+                    scrollProgress={scrollState.progress}
                     propertyData={focusedProperty}
                 />
             )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback, useContext } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DepthLayer from './DepthLayer';
 import ProgressBar from './ProgressBar';
@@ -8,12 +8,11 @@ import { GalleryImageData, RESPONSIVE_LAYERS, LAYER_CONFIG } from './galleryData
 import { useTransition } from '@/context/TransitionContext';
 
 interface LayeredGalleryProps {
-    scrollProgress: number; // Global scroll progress (0-1)
-    isActive: boolean; // Whether Scene 4 is active
+    scrollProgress: number;
+    isActive: boolean;
     onSceneProgress?: (progress: number) => void;
 }
 
-// Mobile metadata modal component
 function MetadataModal({
     image,
     onClose
@@ -120,25 +119,19 @@ export default function LayeredGallery({
     const [deviceType, setDeviceType] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
     const [selectedImage, setSelectedImage] = useState<GalleryImageData | null>(null);
     const [showHint, setShowHint] = useState(true);
-
-    // Mouse position for cursor parallax effect (normalized -1 to 1)
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-    // Transition context for scene navigation
-    const { isTransitioning, transitionPhase, origin } = useTransition();
+    const { isTransitioning, transitionPhase } = useTransition();
 
-    // Gallery-specific progress (maps global scroll to gallery section)
-    // Scene 4 is roughly 70-90% of total scroll
-    const galleryStart = 0.7;
-    const galleryEnd = 0.9;
+    // Gallery scene boundaries from scenes.ts: 0.50-0.75
+    const galleryStart = 0.50;
+    const galleryEnd = 0.75;
     const galleryProgress = Math.max(0, Math.min(1,
         (scrollProgress - galleryStart) / (galleryEnd - galleryStart)
     ));
 
-    // Total height for parallax calculation
     const totalHeight = typeof window !== 'undefined' ? window.innerHeight * 3 : 2000;
 
-    // Check for reduced motion preference
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
         setReducedMotion(mediaQuery.matches);
@@ -148,7 +141,6 @@ export default function LayeredGallery({
         return () => mediaQuery.removeEventListener('change', handler);
     }, []);
 
-    // Detect device type for responsive layers
     useEffect(() => {
         const checkDevice = () => {
             const width = window.innerWidth;
@@ -162,12 +154,10 @@ export default function LayeredGallery({
         return () => window.removeEventListener('resize', checkDevice);
     }, []);
 
-    // Mouse tracking for cursor parallax
     useEffect(() => {
         if (!isActive || reducedMotion || deviceType !== 'desktop') return;
 
         const handleMouseMove = (e: MouseEvent) => {
-            // Normalize to -1 to 1 range
             const x = (e.clientX / window.innerWidth) * 2 - 1;
             const y = (e.clientY / window.innerHeight) * 2 - 1;
             setMousePosition({ x, y });
@@ -177,7 +167,6 @@ export default function LayeredGallery({
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, [isActive, reducedMotion, deviceType]);
 
-    // Hide hint after delay
     useEffect(() => {
         if (isActive && showHint) {
             const timeout = setTimeout(() => setShowHint(false), 3000);
@@ -185,41 +174,22 @@ export default function LayeredGallery({
         }
     }, [isActive, showHint]);
 
-    // Report progress to parent
     useEffect(() => {
         onSceneProgress?.(galleryProgress);
     }, [galleryProgress, onSceneProgress]);
 
-    // Handle image click (mobile: open modal)
     const handleImageClick = useCallback((image: GalleryImageData) => {
         if (deviceType === 'mobile') {
             setSelectedImage(image);
         }
     }, [deviceType]);
 
-    // Get layers based on device type
     const activeLayers = RESPONSIVE_LAYERS[deviceType];
-
-    // Entry/exit opacity - also fade during transition
     const containerOpacity = isActive && !isTransitioning ? 1 : 0;
 
-    // Calculate depth-aware dissolve for each layer during transition
-    const getLayerDissolveStyle = (layer: number) => {
-        if (!isTransitioning || transitionPhase === 'idle' || transitionPhase === 'complete') {
-            return {};
-        }
-
-        // Foreground layers (4-5) fade faster, background layers (1-2) fade slower
-        const layerConfig = LAYER_CONFIG[layer as 1 | 2 | 3 | 4 | 5];
-        const baseDuration = 0.3;
-        const layerDelay = (5 - layer) * 0.05; // Foreground first
-
-        return {
-            opacity: 0,
-            filter: `blur(${layerConfig.blur + 4}px)`,
-            transition: `opacity ${baseDuration}s ease-out ${layerDelay}s, filter ${baseDuration}s ease-out ${layerDelay}s`,
-        };
-    };
+    if (!isActive && !isTransitioning) {
+        return null;
+    }
 
     return (
         <>
@@ -238,9 +208,8 @@ export default function LayeredGallery({
                     zIndex: 40,
                 }}
                 role="region"
-                aria-label={`Property Gallery - ${reducedMotion ? 'static view' : 'immersive spatial experience'} with multiple architectural images`}
+                aria-label="Property Gallery - Immersive spatial experience with architectural images"
             >
-                {/* Skip link for accessibility */}
                 <a
                     href="#footer"
                     className="skip-link"
@@ -262,7 +231,6 @@ export default function LayeredGallery({
                     Skip Gallery
                 </a>
 
-                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{
@@ -303,7 +271,6 @@ export default function LayeredGallery({
                     </h2>
                 </motion.div>
 
-                {/* Scroll hint */}
                 <AnimatePresence>
                     {isActive && showHint && !reducedMotion && (
                         <motion.div
@@ -334,7 +301,6 @@ export default function LayeredGallery({
                     )}
                 </AnimatePresence>
 
-                {/* Depth Layers */}
                 <div
                     style={{
                         position: 'absolute',
@@ -343,7 +309,6 @@ export default function LayeredGallery({
                     }}
                 >
                     {reducedMotion ? (
-                        // Reduced motion: simple vertical stack
                         <div
                             style={{
                                 display: 'flex',
@@ -354,11 +319,8 @@ export default function LayeredGallery({
                                 overflowY: 'auto',
                                 height: '100%',
                             }}
-                        >
-                            {/* Static image grid for reduced motion */}
-                        </div>
+                        />
                     ) : (
-                        // Full immersive experience
                         activeLayers.map((layer) => (
                             <DepthLayer
                                 key={layer}
@@ -373,7 +335,6 @@ export default function LayeredGallery({
                     )}
                 </div>
 
-                {/* Film grain overlay */}
                 <div
                     className="gallery-grain"
                     style={{
@@ -387,7 +348,6 @@ export default function LayeredGallery({
                     aria-hidden="true"
                 />
 
-                {/* Vignette overlay */}
                 <div
                     style={{
                         position: 'absolute',
@@ -398,7 +358,6 @@ export default function LayeredGallery({
                     aria-hidden="true"
                 />
 
-                {/* Lighting simulation overlay */}
                 <div
                     style={{
                         position: 'absolute',
@@ -410,13 +369,11 @@ export default function LayeredGallery({
                 />
             </motion.section>
 
-            {/* Progress bar */}
             <ProgressBar
                 progress={galleryProgress}
                 isVisible={isActive && !reducedMotion}
             />
 
-            {/* Mobile metadata modal */}
             <AnimatePresence>
                 {selectedImage && (
                     <MetadataModal

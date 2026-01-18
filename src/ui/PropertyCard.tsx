@@ -73,6 +73,15 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     const [isVisible, setIsVisible] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
 
+    // Mouse position for 3D tilt effect
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    // Spring physics for smooth tilt
+    const springConfig = { stiffness: 300, damping: 30 };
+    const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [5, -5]), springConfig);
+    const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-5, 5]), springConfig);
+
     // Animate values when visible
     const animatedValue = useCountUp(property.value / 1000000, 1500, isVisible);
     const animatedOccupancy = useCountUp(property.occupancy, 1200, isVisible);
@@ -84,16 +93,43 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         return () => clearTimeout(timeout);
     }, []);
 
+    // Handle mouse move for 3D tilt
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
+        if (!cardRef.current) return;
+        const rect = cardRef.current.getBoundingClientRect();
+        // Normalize to -0.5 to 0.5
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        mouseX.set(x);
+        mouseY.set(y);
+    };
+
+    const handleMouseLeave = (): void => {
+        mouseX.set(0);
+        mouseY.set(0);
+    };
+
     return (
         <motion.div
             ref={cardRef}
-            className="property-meta property-meta--visible"
-            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: -20, filter: 'blur(12px)' }}
+            className="property-meta property-meta--visible property-card"
+            role="article"
+            aria-label={`Property: ${property.name}`}
+            tabIndex={0}
+            initial={{ opacity: 0, y: 40, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.97 }}
             transition={{
                 duration: 1,
                 ease: [0.16, 1, 0.3, 1],
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{
+                perspective: 1000,
+                rotateX,
+                rotateY,
+                transformStyle: 'preserve-3d',
             }}
         >
             {/* Category Label */}

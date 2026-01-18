@@ -155,30 +155,54 @@ export const createMonolith = (
     return group;
 };
 
-// Create floating data visualization particle system
+// Create floating data visualization particle system with color attributes
 export const createDataParticles = (
     count: number,
     bounds: THREE.Vector3,
-    materials: ReturnType<typeof createMaterials>
+    _materials: ReturnType<typeof createMaterials>
 ): THREE.Points => {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3); // NEW: Color attribute for proximity effects
+
+    // Base gold color (R: 0.77, G: 0.63, B: 0.32)
+    const baseColor = { r: 0.77, g: 0.63, b: 0.32 };
 
     for (let i = 0; i < count; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * bounds.x;
-        positions[i * 3 + 1] = Math.random() * bounds.y - bounds.y / 2;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * bounds.z;
+        const i3 = i * 3;
 
-        velocities[i * 3] = (Math.random() - 0.5) * 0.01;
-        velocities[i * 3 + 1] = Math.random() * 0.02 + 0.01;
-        velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
+        // Positions
+        positions[i3] = (Math.random() - 0.5) * bounds.x;
+        positions[i3 + 1] = Math.random() * bounds.y - bounds.y / 2;
+        positions[i3 + 2] = (Math.random() - 0.5) * bounds.z;
+
+        // Velocities
+        velocities[i3] = (Math.random() - 0.5) * 0.01;
+        velocities[i3 + 1] = Math.random() * 0.02 + 0.01;
+        velocities[i3 + 2] = (Math.random() - 0.5) * 0.01;
+
+        // Colors - initialize with base gold
+        colors[i3] = baseColor.r;
+        colors[i3 + 1] = baseColor.g;
+        colors[i3 + 2] = baseColor.b;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); // NEW
 
-    return new THREE.Points(geometry, materials.particle);
+    // Custom material with vertexColors enabled for proximity effects
+    const material = new THREE.PointsMaterial({
+        size: 0.15,
+        transparent: true,
+        opacity: 0.6,
+        vertexColors: true, // NEW: Enable vertex colors
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+    });
+
+    return new THREE.Points(geometry, material);
 };
 
 // Create ground plane with grid pattern

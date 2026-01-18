@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState, useSyncExternalStore } from 'react';
-import { gsap } from 'gsap';
+import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import Lenis from 'lenis';
+import { SCENE_CONFIG, getSceneAtProgress, getSceneProgress } from '@/config/scenes';
 
 export interface ScrollState {
     progress: number;          // 0-1 overall progress
@@ -13,17 +13,6 @@ export interface ScrollState {
 }
 
 export type ScrollCallback = (state: ScrollState) => void;
-
-// Scene breakpoints as percentages of total scroll
-// Hero range widened to 0.00-0.25 for scroll transition robustness
-const SCENE_BREAKPOINTS = [
-    { start: 0, end: 0.00, index: 0 },     // Preload (instant)
-    { start: 0.00, end: 0.25, index: 1 },  // Hero (widened)
-    { start: 0.25, end: 0.5, index: 2 },   // Portfolio
-    { start: 0.5, end: 0.7, index: 3 },    // Focus
-    { start: 0.7, end: 0.9, index: 4 },    // Analytics
-    { start: 0.9, end: 1.0, index: 5 },    // God View
-];
 
 export class ScrollManager {
     private lenis: Lenis | null = null;
@@ -36,13 +25,9 @@ export class ScrollManager {
         sceneProgress: 0,
     };
     private raf: number | null = null;
-    private scrollHeight: number = 0;
 
     constructor() {
         if (typeof window === 'undefined') return;
-
-        // Calculate virtual scroll height (5x viewport for smooth experience)
-        this.scrollHeight = window.innerHeight * 6;
 
         this.initLenis();
         this.startAnimation();
@@ -50,12 +35,12 @@ export class ScrollManager {
 
     private initLenis(): void {
         this.lenis = new Lenis({
-            duration: 1.8,
+            duration: 1.4,
             easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             orientation: 'vertical',
             gestureOrientation: 'vertical',
             smoothWheel: true,
-            wheelMultiplier: 0.8,
+            wheelMultiplier: 1.0,
             touchMultiplier: 1.5,
         });
 
@@ -71,13 +56,9 @@ export class ScrollManager {
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         const progress = maxScroll > 0 ? scroll / maxScroll : 0;
 
-        // Determine scene
-        const scene = SCENE_BREAKPOINTS.find(
-            s => progress >= s.start && progress < s.end
-        ) || SCENE_BREAKPOINTS[SCENE_BREAKPOINTS.length - 1];
-
-        // Calculate within-scene progress
-        const sceneProgress = (progress - scene.start) / (scene.end - scene.start);
+        // Get scene from centralized config
+        const scene = getSceneAtProgress(progress);
+        const sceneProgress = getSceneProgress(progress, scene);
 
         // Update state
         this.state = {
@@ -124,7 +105,7 @@ export class ScrollManager {
     }
 
     scrollToScene(sceneIndex: number): void {
-        const scene = SCENE_BREAKPOINTS.find(s => s.index === sceneIndex);
+        const scene = SCENE_CONFIG.find(s => s.index === sceneIndex);
         if (!scene) return;
 
         const targetScroll = scene.start * (document.documentElement.scrollHeight - window.innerHeight);
@@ -132,7 +113,7 @@ export class ScrollManager {
     }
 
     getState(): ScrollState {
-        return { ...this.state };
+        return this.state;
     }
 
     stop(): void {
@@ -178,15 +159,28 @@ export function getScrollManager(): ScrollManager {
 
 // React hook for scroll state
 export function useScrollState(): ScrollState {
-    const manager = getScrollManager();
+    const managerRef = useRef<ScrollManager | null>(null);
 
-    return useSyncExternalStore(
-        useCallback((onStoreChange: () => void) => {
-            return manager.subscribe(() => onStoreChange());
-        }, [manager]),
-        () => manager.getState(),
-        () => ({ progress: 0, velocity: 0, direction: 'idle', sceneIndex: 0, sceneProgress: 0 }) // Server snapshot
-    );
+    if (!managerRef.current) {
+        managerRef.current = getScrollManager();
+    }
+    const manager = managerRef.current;
+
+    const subscribe = useCallback((onStoreChange: () => void) => {
+        return manager.subscribe(() => onStoreChange());
+    }, [manager]);
+
+    const getSnapshot = useCallback(() => manager.getState(), [manager]);
+
+    const getServerSnapshot = useCallback(() => ({
+        progress: 0,
+        velocity: 0,
+        direction: 'idle' as const,
+        sceneIndex: 0,
+        sceneProgress: 0,
+    }), []);
+
+    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 // Hook for scroll-triggered animations

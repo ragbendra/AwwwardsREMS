@@ -61,6 +61,35 @@ export default function PropertyDetailOverlay() {
         }, TIMING.exitDuration * 1000 + 100);
     };
 
+    // Focus management for accessibility
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const previousActiveElement = useRef<HTMLElement | null>(null);
+
+    useEffect(() => {
+        if (showContent) {
+            // Store previously focused element
+            previousActiveElement.current = document.activeElement as HTMLElement;
+
+            // Focus the close button when overlay opens
+            setTimeout(() => closeButtonRef.current?.focus(), 100);
+
+            // Handle ESC key to close
+            const handleKeyDown = (e: KeyboardEvent): void => {
+                if (e.key === 'Escape') {
+                    handleBack();
+                }
+            };
+
+            document.addEventListener('keydown', handleKeyDown);
+
+            return () => {
+                document.removeEventListener('keydown', handleKeyDown);
+                // Return focus to previous element on cleanup
+                previousActiveElement.current?.focus();
+            };
+        }
+    }, [showContent]);
+
     // Don't render if no destination or not mounted
     if (!isMounted || !property) {
         return null;
@@ -133,7 +162,9 @@ export default function PropertyDetailOverlay() {
 
                     {/* Back Button - Top Left */}
                     <motion.button
+                        ref={closeButtonRef}
                         onClick={handleBack}
+                        aria-label="Close property detail and return to gallery"
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.3, duration: 0.5, ease: TIMING.ease }}
